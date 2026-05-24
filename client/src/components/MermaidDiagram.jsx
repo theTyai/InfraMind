@@ -77,9 +77,11 @@ let diagramCounter = 0
 
 export default function MermaidDiagram({ code, title, onSelectNode }) {
   const containerRef = useRef(null)
+  const wrapperRef = useRef(null)
   const [error, setError] = useState('')
   const [svgContent, setSvgContent] = useState('')
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  const [wrapperSize, setWrapperSize] = useState({ width: 0, height: 0 })
   const idRef = useRef(`mermaid-${++diagramCounter}`)
 
   // Define a global callback for Mermaid node clicks
@@ -100,6 +102,29 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
     setDimensions({ width: 0, height: 0 })
   }, [code])
 
+  // Observe wrapper dimensions to handle sizing and scale calculation dynamically
+  useEffect(() => {
+    if (!wrapperRef.current) return
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const { width, height } = entry.contentRect
+        setWrapperSize((prev) => {
+          // Compare rounded values to prevent subpixel noise and infinite layout loops
+          const prevW = Math.round(prev.width)
+          const prevH = Math.round(prev.height)
+          const newW = Math.round(width)
+          const newH = Math.round(height)
+          if (prevW === newW && prevH === newH) {
+            return prev
+          }
+          return { width, height }
+        })
+      }
+    })
+    resizeObserver.observe(wrapperRef.current)
+    return () => resizeObserver.disconnect()
+  }, [])
+
   // Mermaid Renderer
   useEffect(() => {
     if (!code) return
@@ -114,16 +139,29 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
         const { svg } = await mermaid.render(svgId, code)
         if (cancelled) return
 
-        // Parse viewBox dimensions
+        // Parse viewBox dimensions supporting space and comma separators
         const parser = new DOMParser()
         const doc = parser.parseFromString(svg, 'image/svg+xml')
         const svgEl = doc.querySelector('svg')
         let w = 800
         let h = 600
         if (svgEl) {
-          const viewBox = svgEl.getAttribute('viewBox')
+          let viewBox = svgEl.getAttribute('viewBox')
+          const widthAttr = svgEl.getAttribute('width')
+          const heightAttr = svgEl.getAttribute('height')
+
+          if (!viewBox && widthAttr && heightAttr) {
+            // Synthesize viewBox from width and height attributes if viewBox is missing
+            const parsedW = parseFloat(widthAttr)
+            const parsedH = parseFloat(heightAttr)
+            if (!isNaN(parsedW) && !isNaN(parsedH)) {
+              viewBox = `0 0 ${parsedW} ${parsedH}`
+              svgEl.setAttribute('viewBox', viewBox)
+            }
+          }
+
           if (viewBox) {
-            const parts = viewBox.split(/\s+/)
+            const parts = viewBox.split(/[\s,]+/).filter(Boolean)
             if (parts.length === 4) {
               w = parseFloat(parts[2])
               h = parseFloat(parts[3])
@@ -131,8 +169,11 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
           }
         }
 
+        // Re-serialize SVG if we updated attributes
+        const updatedSvg = svgEl ? new XMLSerializer().serializeToString(svgEl) : svg
+
         setDimensions({ width: w, height: h })
-        setSvgContent(svg)
+        setSvgContent(updatedSvg)
       } catch (e) {
         if (!cancelled) {
           setError(`Diagram render error: ${e.message}`)
@@ -145,17 +186,23 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
     return () => { cancelled = true }
   }, [code])
 
-  // DOM node listener attacher
+  // DOM node listener attacher & fluid styling
   useEffect(() => {
     if (!svgContent || !containerRef.current) return
 
-    // Style SVG element inside container
+    // Style SVG element inside container to make it fluid
     const svgEl = containerRef.current.querySelector('svg')
     if (svgEl) {
       svgEl.style.width = '100%'
       svgEl.style.height = '100%'
+      svgEl.style.maxWidth = 'none'
+      svgEl.style.maxHeight = 'none'
       svgEl.style.display = 'block'
       svgEl.style.overflow = 'visible'
+      
+      // Remove inline attributes that restrict styling
+      svgEl.removeAttribute('width')
+      svgEl.removeAttribute('height')
     }
 
     // Attach click and hover listeners
@@ -195,21 +242,37 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
     })
   }, [svgContent, onSelectNode])
 
-  const wrapperKey = `${idRef.current}-${code.length}-${dimensions.width}-${dimensions.height}`
+  // Dynamic Scale Calculations
+  let initialScale = 1
+  if (wrapperSize.width > 0 && wrapperSize.height > 0 && dimensions.width > 0 && dimensions.height > 0) {
+    // Scale by height (excluding 40px vertical padding to clear borders/headers) to fit inside the modal box
+    const scaleY = Math.max(10, wrapperSize.height - 40) / dimensions.height
+    initialScale = scaleY
+    // Ensure initialScale is not smaller than 0.25 (25%)
+    initialScale = Math.max(0.25, initialScale)
+  }
+  // Clamp minScale to initialScale to allow zooming in, but not out beyond the initial fit size
+  const minScale = initialScale
+  const maxScale = Math.max(4.0, initialScale * 2)
+
+  // Recalculate wrapper key when dimensions change (rounded to nearest 10px to avoid subpixel layout shifts)
+  const roundedW = Math.round(wrapperSize.width / 10) * 10
+  const roundedH = Math.round(wrapperSize.height / 10) * 10
+  const wrapperKey = `${idRef.current}-${code.length}-${dimensions.width}-${dimensions.height}-${roundedW}-${roundedH}`
 
   return (
     <div className={styles.wrap}>
       {title && <div className={styles.title}>{title}</div>}
       
-      <div className={styles.diagramBox}>
+      <div ref={wrapperRef} className={styles.diagramBox}>
         {svgContent && dimensions.width > 0 ? (
           <TransformWrapper
             key={wrapperKey}
-            initialScale={1}
-            minScale={0.25}
-            maxScale={2.0}
+            initialScale={initialScale}
+            minScale={minScale}
+            maxScale={maxScale}
             centerOnInit={true}
-            limitToBounds={true}
+            limitToBounds={false}
             alignmentAnimation={{ disabled: true }}
             doubleClick={{ disabled: true }}
             panning={{ velocityDisabled: true }}
