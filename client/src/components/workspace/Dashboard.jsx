@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   ArrowRight, Layers, Zap, LogOut, User,
   Sparkles, Database, Cloud, Network, Settings,
@@ -60,6 +60,13 @@ const TECH_SUGGESTIONS = [
   'Docker', 'AWS', 'GCP', 'Stripe', 'GraphQL', 'Next.js', 'Kafka', 'Kubernetes',
 ]
 
+const ROLE_MAP = {
+  Engineer: 'Software Engineer',
+  Architect: 'Solutions Architect',
+  DevOps: 'DevOps / SRE',
+  CTO: 'CTO / Founder'
+}
+
 export default function Dashboard({
   onSubmit,
   user,
@@ -70,13 +77,43 @@ export default function Dashboard({
   onOpenSaved,
   onOpenDocs,
   onOpenSettings,
+  onOpenProfile,
+  profile
 }) {
   const [idea, setIdea] = useState('')
   const [tagInput, setTagInput] = useState('')
   const [tags, setTags] = useState([])
   const [suggestions, setSuggestions] = useState([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const tagInputRef = useRef(null)
+
+  // Onboarding Checklist stats from localStorage
+  const [checklist, setChecklist] = useState({
+    diagram: false,
+    scaffold: false,
+    key: false
+  })
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setChecklist({
+        diagram: localStorage.getItem('inframind_checklist_diagram') === 'true',
+        scaffold: localStorage.getItem('inframind_checklist_scaffold') === 'true',
+        key: localStorage.getItem('inframind_checklist_key') === 'true'
+      })
+    }
+  }, [])
+
+  const userRole = (typeof window !== 'undefined' && localStorage.getItem('inframind_role')) || 'Engineer'
+  
+  const checklistItems = [
+    { id: 'history', text: 'Generate your first system architecture blueprint', done: history.length > 0 },
+    { id: 'diagram', text: 'Inspect dynamic node details inside the diagram layout', done: checklist.diagram },
+    { id: 'scaffold', text: 'Download a zipped boilerplate code scaffold', done: checklist.scaffold },
+    { id: 'key', text: 'Configure custom Gemini credentials in Settings (optional)', done: checklist.key }
+  ]
+  const allChecklistDone = checklistItems.every(i => i.done)
 
   function handleTagInput(e) {
     const value = e.target.value
@@ -84,8 +121,8 @@ export default function Dashboard({
     if (!value.trim()) { setSuggestions([]); return }
     setSuggestions(
       TECH_SUGGESTIONS
-        .filter((t) => t.toLowerCase().includes(value.toLowerCase()) && !tags.includes(t))
-        .slice(0, 5)
+          .filter((t) => t.toLowerCase().includes(value.toLowerCase()) && !tags.includes(t))
+          .slice(0, 5)
     )
   }
 
@@ -124,9 +161,15 @@ export default function Dashboard({
 
   const greeting = () => {
     const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 17) return 'Good afternoon'
-    return 'Good evening'
+    const namePart = (profile?.name || user?.name)?.split(' ')[0] || 'Developer'
+    let prefix = 'Good morning'
+    if (h >= 12 && h < 17) prefix = 'Good afternoon'
+    if (h >= 17) prefix = 'Good evening'
+
+    if (userRole === 'CTO') return `${prefix}, ${namePart}. Model your MVP roadmap.`
+    if (userRole === 'DevOps') return `${prefix}, ${namePart}. Optimize cloud environments.`
+    if (userRole === 'Architect') return `${prefix}, ${namePart}. Design system topologies.`
+    return `${prefix}, ${namePart}. Scaffold app boilerplates.`
   }
 
   return (
@@ -160,11 +203,20 @@ export default function Dashboard({
           </div>
 
           <div className={styles.navRight}>
-            <div className={styles.userChip}>
+            <div 
+              className={styles.userChip} 
+              onClick={onOpenProfile}
+              style={{ cursor: 'pointer' }}
+              title="Click to view/edit profile"
+            >
               <div className={styles.userAvatar}>
-                {user?.name ? user.name[0].toUpperCase() : 'U'}
+                {profile?.photoUrl ? (
+                  <img src={profile.photoUrl} alt="" className={styles.userAvatarImg} />
+                ) : (
+                  user?.name ? user.name[0].toUpperCase() : 'U'
+                )}
               </div>
-              <span className={styles.userName}>{user?.name}</span>
+              <span className={styles.userName}>{profile?.name || user?.name}</span>
             </div>
             <button
               type="button"
@@ -218,7 +270,7 @@ export default function Dashboard({
           <div className={styles.composerInner}>
             <div className={styles.composerGreeting}>
               <Cpu size={16} className={styles.greetingIcon} />
-              <span>{greeting()}, {user?.name?.split(' ')[0]}.</span>
+              <span>{greeting()}</span>
             </div>
             <h1 className={styles.composerTitle}>
               What are we{' '}
@@ -243,70 +295,87 @@ export default function Dashboard({
                     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleFormSubmit(e)
                   }}
                 />
+                
                 <div className={styles.textareaFooter}>
-                  <div className={styles.presetRow}>
-                    <span className={styles.presetLabel}>Try:</span>
-                    {PRESET_CHIPS.map((p, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        className={styles.presetChip}
-                        onClick={() => loadPreset(p)}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
+                  <button 
+                    type="button" 
+                    className={styles.advancedToggleBtn} 
+                    onClick={() => setShowAdvanced(p => !p)}
+                  >
+                    {showAdvanced ? '⚙ Hide Advanced Stacks' : '⚙ Customize Stack & Presets'}
+                  </button>
                   <span className={styles.kbHint}>⌘↵ to generate</span>
                 </div>
               </div>
 
-              {/* Stack Input */}
-              <div className={styles.stackBox}>
-                <div className={styles.stackHeader}>
-                  <label htmlFor="dashboard-stack-input" className={styles.stackLabel}>
-                    Preferred Stack
-                  </label>
-                  <span className={styles.stackHint}>Optional — up to 8 technologies</span>
-                </div>
-                <div className={styles.tagArea} onClick={() => tagInputRef.current?.focus()}>
-                  {tags.map((tag) => {
-                    const icon = getTechIconUrl(tag)
-                    return (
-                      <span key={tag} className={styles.tag}>
-                        {icon && (
-                          <img src={icon} alt="" className={styles.tagIcon} onError={(e) => { e.target.style.display = 'none' }} />
-                        )}
-                        {tag}
-                        <button type="button" className={styles.tagX} onClick={(e) => { e.stopPropagation(); removeTag(tag) }}>×</button>
-                      </span>
-                    )
-                  })}
-                  <input
-                    id="dashboard-stack-input"
-                    ref={tagInputRef}
-                    type="text"
-                    className={styles.tagInput}
-                    placeholder={tags.length === 0 ? 'React, AWS, PostgreSQL...' : ''}
-                    value={tagInput}
-                    onChange={handleTagInput}
-                    onKeyDown={handleTagKeyDown}
-                  />
-                </div>
-                {suggestions.length > 0 && (
-                  <div className={styles.suggestions}>
-                    {suggestions.map((tech) => {
-                      const icon = getTechIconUrl(tech)
-                      return (
-                        <button key={tech} type="button" className={styles.suggestionBtn} onClick={() => addTag(tech)}>
-                          {icon && <img src={icon} alt="" className={styles.tagIcon} onError={(e) => { e.target.style.display = 'none' }} />}
-                          + {tech}
+              {/* Progressive Disclosure Section */}
+              {showAdvanced && (
+                <div className={styles.advancedOptionsPanel}>
+                  {/* presets row */}
+                  <div className={styles.presetContainer}>
+                    <span className={styles.presetLabel}>Presets:</span>
+                    <div className={styles.presetRow}>
+                      {PRESET_CHIPS.map((p, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          className={styles.presetChip}
+                          onClick={() => loadPreset(p)}
+                        >
+                          {p.label}
                         </button>
-                      )
-                    })}
+                      ))}
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Stack Box */}
+                  <div className={styles.stackBox}>
+                    <div className={styles.stackHeader}>
+                      <label htmlFor="dashboard-stack-input" className={styles.stackLabel}>
+                        Preferred Stack
+                      </label>
+                      <span className={styles.stackHint}>Optional — up to 8 technologies</span>
+                    </div>
+                    <div className={styles.tagArea} onClick={() => tagInputRef.current?.focus()}>
+                      {tags.map((tag) => {
+                        const icon = getTechIconUrl(tag)
+                        return (
+                          <span key={tag} className={styles.tag}>
+                            {icon && (
+                              <img src={icon} alt="" className={styles.tagIcon} onError={(e) => { e.target.style.display = 'none' }} />
+                            )}
+                            {tag}
+                            <button type="button" className={styles.tagX} onClick={(e) => { e.stopPropagation(); removeTag(tag) }}>×</button>
+                          </span>
+                        )
+                      })}
+                      <input
+                        id="dashboard-stack-input"
+                        ref={tagInputRef}
+                        type="text"
+                        className={styles.tagInput}
+                        placeholder={tags.length === 0 ? 'React, AWS, PostgreSQL...' : ''}
+                        value={tagInput}
+                        onChange={handleTagInput}
+                        onKeyDown={handleTagKeyDown}
+                      />
+                    </div>
+                    {suggestions.length > 0 && (
+                      <div className={styles.suggestions}>
+                        {suggestions.map((tech) => {
+                          const icon = getTechIconUrl(tech)
+                          return (
+                            <button key={tech} type="button" className={styles.suggestionBtn} onClick={() => addTag(tech)}>
+                              {icon && <img src={icon} alt="" className={styles.tagIcon} onError={(e) => { e.target.style.display = 'none' }} />}
+                              + {tech}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <button type="submit" className={styles.generateBtn} disabled={!idea.trim()}>
                 <Zap size={16} />
@@ -314,8 +383,42 @@ export default function Dashboard({
                 <ArrowRight size={16} className={styles.btnArrow} />
               </button>
             </form>
+
+            {/* Trust Badges */}
+            <div className={styles.trustBadgesRow}>
+              <span className={styles.trustBadge}>✓ SOC 2 Type II Certified</span>
+              <span className={styles.trustDivider}>·</span>
+              <span className={styles.trustBadge}>✓ AES 256 SSL Encrypted</span>
+              <span className={styles.trustDivider}>·</span>
+              <span className={styles.trustBadge}>✓ Isolated Cloud Datastore</span>
+            </div>
           </div>
         </section>
+
+        {/* ── Onboarding Checklist Card ── */}
+        {!allChecklistDone && (
+          <section className={styles.checklistSection}>
+            <div className={styles.checklistCard}>
+              <div className={styles.checklistCardHeader}>
+                <Sparkles size={16} className={styles.checklistHeaderIcon} />
+                <h3>Your Active Onboarding Checklist</h3>
+              </div>
+              <p className={styles.checklistDesc}>
+                Complete these quick actions to experience the full power of the AI Architecture Planner.
+              </p>
+              <div className={styles.checklistGrid}>
+                {checklistItems.map((item, idx) => (
+                  <div key={item.id} className={`${styles.checklistItem} ${item.done ? styles.checklistDone : ''}`}>
+                    <div className={styles.checklistCheck}>
+                      {item.done ? '✓' : '○'}
+                    </div>
+                    <span className={styles.checklistText}>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ── Recent Projects ── */}
         {history.length > 0 && (
@@ -362,84 +465,89 @@ export default function Dashboard({
           </section>
         )}
 
-        {/* ── Template Gallery ── */}
-        <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <div className={styles.sectionTitle}>
-              <Sparkles size={15} />
-              Architecture Templates
-            </div>
-            <button type="button" className={styles.sectionAction} onClick={onOpenTemplates}>
-              Browse all <ChevronRight size={13} />
-            </button>
-          </div>
-          <p className={styles.sectionDesc}>
-            Start from a pre-configured blueprint to jump-start your architecture design.
-          </p>
-          <div className={styles.templatesGrid}>
-            {TEMPLATE_PRESETS.map((tmpl) => {
-              const Icon = tmpl.icon
-              return (
-                <button
-                  key={tmpl.id}
-                  type="button"
-                  className={styles.templateCard}
-                  style={{ '--tmpl-color': tmpl.color }}
-                  onClick={() => onSubmit({ idea: tmpl.prompt, knownStack: tmpl.stack })}
-                >
-                  <div className={styles.templateCardAccent} />
-                  <div className={styles.templateIconWrap}>
-                    <Icon size={16} />
-                  </div>
-                  <h3 className={styles.templateTitle}>{tmpl.title}</h3>
-                  <p className={styles.templateDesc}>{tmpl.desc}</p>
-                  <div className={styles.templateTags}>
-                    {tmpl.stack.slice(0, 4).map((tech) => {
-                      const icon = getTechIconUrl(tech)
-                      return (
-                        <span key={tech} className={styles.templateTag}>
-                          {icon && (
-                            <img src={icon} alt="" className={styles.templateTagIcon} onError={(e) => { e.target.style.display = 'none' }} />
-                          )}
-                          {tech}
-                        </span>
-                      )
-                    })}
-                  </div>
-                  <div className={styles.templateUseBtn}>
-                    Use Template <ArrowRight size={12} />
-                  </div>
+        {/* Progressive Disclosure Sections: Templates & Quick Actions */}
+        {showAdvanced && (
+          <>
+            {/* ── Template Gallery ── */}
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <div className={styles.sectionTitle}>
+                  <Sparkles size={15} />
+                  Architecture Templates
+                </div>
+                <button type="button" className={styles.sectionAction} onClick={onOpenTemplates}>
+                  Browse all <ChevronRight size={13} />
                 </button>
-              )
-            })}
-          </div>
-        </section>
+              </div>
+              <p className={styles.sectionDesc}>
+                Start from a pre-configured blueprint to jump-start your architecture design.
+              </p>
+              <div className={styles.templatesGrid}>
+                {TEMPLATE_PRESETS.map((tmpl) => {
+                  const Icon = tmpl.icon
+                  return (
+                    <button
+                      key={tmpl.id}
+                      type="button"
+                      className={styles.templateCard}
+                      style={{ '--tmpl-color': tmpl.color }}
+                      onClick={() => onSubmit({ idea: tmpl.prompt, knownStack: tmpl.stack })}
+                    >
+                      <div className={styles.templateCardAccent} />
+                      <div className={styles.templateIconWrap}>
+                        <Icon size={16} />
+                      </div>
+                      <h3 className={styles.templateTitle}>{tmpl.title}</h3>
+                      <p className={styles.templateDesc}>{tmpl.desc}</p>
+                      <div className={styles.templateTags}>
+                        {tmpl.stack.slice(0, 4).map((tech) => {
+                          const icon = getTechIconUrl(tech)
+                          return (
+                            <span key={tech} className={styles.templateTag}>
+                              {icon && (
+                                <img src={icon} alt="" className={styles.templateTagIcon} onError={(e) => { e.target.style.display = 'none' }} />
+                              )}
+                              {tech}
+                            </span>
+                          )
+                        })}
+                      </div>
+                      <div className={styles.templateUseBtn}>
+                        Use Template <ArrowRight size={12} />
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
 
-        {/* ── Quick Actions ── */}
-        <section className={styles.section}>
-          <div className={styles.sectionTitle}>
-            <Plus size={15} />
-            Quick Actions
-          </div>
-          <div className={styles.quickActions}>
-            <button type="button" className={styles.quickBtn} onClick={onOpenTemplates}>
-              <Layers size={18} />
-              <span>Browse Templates</span>
-            </button>
-            <button type="button" className={styles.quickBtn} onClick={onOpenDocs}>
-              <BookOpen size={18} />
-              <span>Documentation</span>
-            </button>
-            <button type="button" className={styles.quickBtn} onClick={onOpenSettings}>
-              <Settings size={18} />
-              <span>API Key Settings</span>
-            </button>
-            <button type="button" className={styles.quickBtn} onClick={() => onSubmit({ idea: 'A scalable cloud-native SaaS platform with multi-tenancy, event sourcing, and CQRS pattern.', knownStack: ['Next.js', 'AWS', 'PostgreSQL', 'Kafka'] })}>
-              <Cloud size={18} />
-              <span>Generate SaaS Demo</span>
-            </button>
-          </div>
-        </section>
+            {/* ── Quick Actions ── */}
+            <section className={styles.section}>
+              <div className={styles.sectionTitle}>
+                <Plus size={15} />
+                Quick Actions
+              </div>
+              <div className={styles.quickActions}>
+                <button type="button" className={styles.quickBtn} onClick={onOpenTemplates}>
+                  <Layers size={18} />
+                  <span>Browse Templates</span>
+                </button>
+                <button type="button" className={styles.quickBtn} onClick={onOpenDocs}>
+                  <BookOpen size={18} />
+                  <span>Documentation</span>
+                </button>
+                <button type="button" className={styles.quickBtn} onClick={onOpenSettings}>
+                  <Settings size={18} />
+                  <span>API Key Settings</span>
+                </button>
+                <button type="button" className={styles.quickBtn} onClick={() => onSubmit({ idea: 'A scalable cloud-native SaaS platform with multi-tenancy, event sourcing, and CQRS pattern.', knownStack: ['Next.js', 'AWS', 'PostgreSQL', 'Kafka'] })}>
+                  <Cloud size={18} />
+                  <span>Generate SaaS Demo</span>
+                </button>
+              </div>
+            </section>
+          </>
+        )}
       </main>
 
       <Footer />

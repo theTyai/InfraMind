@@ -475,3 +475,70 @@
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Contextual AI Optimizer Styles */
+.contextualAiBlock {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+.contextualAiHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--secondary);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  margin-bottom: 8px;
+}
+
+.sparklesIcon {
+  color: var(--secondary);
+}
+
+.contextualAiForm {
+  display: flex;
+  gap: 8px;
+}
+
+.contextualInput {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.contextualInput:focus {
+  border-color: rgba(37, 99, 235, 0.5);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.contextualSubmitBtn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.contextualSubmitBtn:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.contextualSubmitBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+

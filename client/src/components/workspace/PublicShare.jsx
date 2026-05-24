@@ -1,26 +1,64 @@
 // src/components/workspace/PublicShare.jsx
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Layers, ArrowRight, ExternalLink, AlertCircle, Cpu, Database, Network } from 'lucide-react'
-import { getTechIconUrl } from '../../utils/techIcons.js'
+import { ArrowRight, AlertCircle, Github, Twitter, Linkedin, ExternalLink } from 'lucide-react'
 import Logo from '../ui/Logo.jsx'
+import ArchitectureTabs from './ArchitectureTabs.jsx'
+import InspectorPanel from '../layout/InspectorPanel.jsx'
+import { exportToPdf } from '../../utils/exportPdf.js'
+import { generateScaffold } from '../../utils/generateScaffold.js'
 import styles from './PublicShare.module.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 
 export default function PublicShare() {
   const { shareId } = useParams()
-  const [data, setData]     = useState(null)
+  const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError]   = useState(null)
+  const [error, setError]     = useState(null)
+
+  const [exporting, setExporting]       = useState(false)
+  const [selectedNode, setSelectedNode] = useState(null)
 
   useEffect(() => {
     if (!shareId) return
     fetch(`${API_BASE}/public/${shareId}`)
-      .then(r => { if (!r.ok) throw new Error('Architecture not found or has been revoked.'); return r.json() })
-      .then(d => { setData(d); setLoading(false) })
-      .catch(e => { setError(e.message); setLoading(false) })
+      .then(r => { 
+        if (!r.ok) throw new Error('Architecture not found or has been revoked.')
+        return r.json() 
+      })
+      .then(d => { 
+        setData(d)
+        setLoading(false) 
+      })
+      .catch(e => { 
+        setError(e.message)
+        setLoading(false) 
+      })
   }, [shareId])
+
+  const handleExport = async () => {
+    if (!data?.architecture) return
+    setExporting(true)
+    try {
+      await exportToPdf(data.architecture, data.summary || data.architecture.projectTitle)
+    } catch (e) {
+      console.error('PDF export failed:', e)
+      alert('PDF export failed: ' + e.message)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleScaffold = async () => {
+    if (!data?.architecture) return
+    try {
+      await generateScaffold(data.architecture)
+    } catch (e) {
+      console.error('Scaffold failed:', e)
+      alert('Scaffold failed: ' + e.message)
+    }
+  }
 
   if (loading) {
     return (
@@ -44,8 +82,6 @@ export default function PublicShare() {
     )
   }
 
-  const arch = data?.architecture || {}
-
   return (
     <div className={styles.page}>
       {/* Ambient */}
@@ -58,122 +94,87 @@ export default function PublicShare() {
       <nav className={styles.nav}>
         <div className={styles.navInner}>
           <Logo size={28} showText />
+          
           <div className={styles.navBadge}>
             <ExternalLink size={11} />
-            Shared Architecture
+            Shared View
           </div>
-          <Link to="/" className={styles.navCta}>
-            Try InfraMind free <ArrowRight size={13} />
-          </Link>
-        </div>
-      </nav>
 
-      {/* Content */}
-      <main className={styles.main}>
-        {/* Hero */}
-        <div className={styles.hero}>
-          <div className={styles.heroBadge}>
-            <Layers size={12} />
-            AI-Generated Architecture Blueprint
-          </div>
-          <h1 className={styles.heroTitle}>{arch.projectTitle || data.title || 'Architecture'}</h1>
-          <p className={styles.heroDesc}>{arch.projectSummary || data.summary}</p>
-        </div>
-
-        {/* Rationale */}
-        {arch.architectureExplanation?.whyThisStack && (
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}>Architecture Rationale</h2>
-            <p className={styles.cardText}>{arch.architectureExplanation.whyThisStack}</p>
-          </div>
-        )}
-
-        {/* Tech Stack */}
-        {arch.stack?.length > 0 && (
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}>Technology Stack</h2>
-            <div className={styles.stackGrid}>
-              {arch.stack.map((item, i) => {
-                const icon = getTechIconUrl(item.recommendation)
-                return (
-                  <div key={i} className={styles.stackChip}>
-                    {icon && <img src={icon} alt="" className={styles.chipIcon} onError={e => e.target.style.display='none'} />}
-                    <span className={styles.chipLayer}>{item.layer}:</span>
-                    <span className={styles.chipRec}>{item.recommendation}</span>
-                  </div>
-                )
-              })}
+          {data?.author && (
+            <div className={styles.authorBadge}>
+              <div className={styles.authorAvatar}>
+                {data.author.photoUrl ? (
+                  <img src={data.author.photoUrl} alt="" className={styles.authorAvatarImg} />
+                ) : (
+                  data.author.name ? data.author.name[0].toUpperCase() : 'U'
+                )}
+              </div>
+              <div className={styles.authorMeta}>
+                <span className={styles.authorName}>{data.author.name || 'Developer'}</span>
+                <span className={styles.authorUsername}>@{data.author.username}</span>
+              </div>
+              
+              {/* Social icons */}
+              <div className={styles.authorSocials}>
+                {data.author.githubUrl && (
+                  <a href={data.author.githubUrl} target="_blank" rel="noopener noreferrer" title="GitHub profile">
+                    <Github size={13} />
+                  </a>
+                )}
+                {data.author.twitterUrl && (
+                  <a href={data.author.twitterUrl} target="_blank" rel="noopener noreferrer" title="Twitter/X profile">
+                    <Twitter size={13} />
+                  </a>
+                )}
+                {data.author.linkedinUrl && (
+                  <a href={data.author.linkedinUrl} target="_blank" rel="noopener noreferrer" title="LinkedIn profile">
+                    <Linkedin size={13} />
+                  </a>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Key Decisions */}
-        {arch.architectureExplanation?.keyDecisions?.length > 0 && (
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}>Key System Decisions</h2>
-            <ul className={styles.decisionsList}>
-              {arch.architectureExplanation.keyDecisions.map((d, i) => (
-                <li key={i} className={styles.decisionItem}>
-                  <span className={styles.bullet}>✦</span>
-                  {d}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* API Preview */}
-        {arch.apis?.length > 0 && (
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}>
-              <Network size={15} /> API Endpoints ({arch.apis.length})
-            </h2>
-            <div className={styles.apiList}>
-              {arch.apis.slice(0, 6).map((api, i) => (
-                <div key={i} className={styles.apiRow}>
-                  <span className={`${styles.methodBadge} ${styles[api.method]}`}>{api.method}</span>
-                  <code className={styles.apiRoute}>{api.route}</code>
-                  <span className={styles.apiDesc}>{api.description}</span>
-                </div>
-              ))}
-              {arch.apis.length > 6 && (
-                <p className={styles.moreHint}>+{arch.apis.length - 6} more endpoints</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* DB Schema Preview */}
-        {arch.dbSchema?.length > 0 && (
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}>
-              <Database size={15} /> Database Models ({arch.dbSchema.length})
-            </h2>
-            <div className={styles.dbGrid}>
-              {arch.dbSchema.slice(0, 4).map((model, i) => (
-                <div key={i} className={styles.dbCard}>
-                  <strong className={styles.dbName}>{model.collection}</strong>
-                  <span className={styles.dbFields}>{model.fields?.length || 0} fields</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* CTA */}
-        <div className={styles.cta}>
-          <div className={styles.ctaInner}>
-            <Cpu size={20} className={styles.ctaIcon} />
-            <div>
-              <h3 className={styles.ctaTitle}>Design your own architecture</h3>
-              <p className={styles.ctaDesc}>Generate production-ready blueprints for any system in seconds. Free to start.</p>
-            </div>
-            <Link to="/" className={styles.ctaBtn}>
-              Start Building Free <ArrowRight size={14} />
+          )}
+          
+          <div className={styles.navRightActions}>
+            <Link to="/" className={styles.navCta}>
+              Try InfraMind <ArrowRight size={13} />
             </Link>
           </div>
         </div>
-      </main>
+      </nav>
+
+      {/* Split Interactive Viewport */}
+      <div className={styles.mainLayout}>
+        <div className={styles.workspaceContent}>
+          <ArchitectureTabs
+            data={data.architecture}
+            idea={data.summary || data.architecture.projectTitle}
+            onExport={handleExport}
+            onScaffold={handleScaffold}
+            onOpenShare={null}
+            exporting={exporting}
+            onSubmit={null} // Read-only mode: hides prompt refiner bar
+            envKeyStatus="valid"
+            selectedNode={selectedNode}
+            onSelectNode={setSelectedNode}
+          />
+        </div>
+        {selectedNode && (
+          <div className={styles.inspectorSlot}>
+            <InspectorPanel
+              state="result"
+              data={data.architecture}
+              exporting={exporting}
+              onExport={handleExport}
+              selectedNode={selectedNode}
+              onSelectNode={setSelectedNode}
+              onClose={() => setSelectedNode(null)}
+              onSubmit={null} // Read-only mode: hides optimize form
+              lastIdea={data.summary || data.architecture.projectTitle}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -36,6 +36,8 @@ export default function SettingsModal({ isOpen, onClose }) {
     localStorage.setItem('inframind_theme', theme)
     document.documentElement.setAttribute('data-theme', theme)
 
+    localStorage.setItem('inframind_checklist_key', 'true')
+
     setStatusMessage('Settings saved successfully!')
     setTimeout(() => {
       setStatusMessage('')

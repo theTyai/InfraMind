@@ -10,6 +10,8 @@ export default function AuthModal({ isOpen, onClose, login, signup }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
+  const [role, setRole] = useState('Engineer')
+  const [goal, setGoal] = useState('MVP')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -39,6 +41,8 @@ export default function AuthModal({ isOpen, onClose, login, signup }) {
         if (auth.currentUser) {
           await updateProfile(auth.currentUser, { displayName: userName })
         }
+        localStorage.setItem('inframind_role', role)
+        localStorage.setItem('inframind_goal', goal)
       } else {
         await login(email.trim(), password.trim())
       }
@@ -147,6 +151,45 @@ export default function AuthModal({ isOpen, onClose, login, signup }) {
                 />
               </div>
             </div>
+
+            {isSignUp && (
+              <>
+                <div className={styles.inputField}>
+                  <label htmlFor="auth-role" className={styles.label}>Your Role</label>
+                  <div className={styles.inputWrap}>
+                    <select
+                      id="auth-role"
+                      className={styles.select}
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                      disabled={loading}
+                    >
+                      <option value="Engineer">Software Engineer</option>
+                      <option value="Architect">Solutions Architect</option>
+                      <option value="DevOps">DevOps / SRE</option>
+                      <option value="CTO">CTO / Founder</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.inputField}>
+                  <label htmlFor="auth-goal" className={styles.label}>Primary Goal</label>
+                  <div className={styles.inputWrap}>
+                    <select
+                      id="auth-goal"
+                      className={styles.select}
+                      value={goal}
+                      onChange={(e) => setGoal(e.target.value)}
+                      disabled={loading}
+                    >
+                      <option value="MVP">Prototyping MVPs</option>
+                      <option value="Docs">System Documentation</option>
+                      <option value="Tech">Exploring Tech Stacks</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
 
             {error && <div className={styles.error}>{error}</div>}
 

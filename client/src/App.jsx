@@ -21,6 +21,7 @@ import TemplatesModal from './components/workspace/TemplatesModal.jsx'
 import DocsModal from './components/workspace/DocsModal.jsx'
 import SavedArchitecturesModal from './components/workspace/SavedArchitecturesModal.jsx'
 import ShareModal from './components/workspace/ShareModal.jsx'
+import ProfileModal from './components/workspace/ProfileModal.jsx'
 
 // ── Loader ───────────────────────────────────────────────────────────────────
 function Loader({ text = 'Loading…' }) {
@@ -63,15 +64,35 @@ function AuthenticatedApp({ modals, setModals, onAuthRequired }) {
   const isWorkspace = location.pathname.startsWith('/workspace')
   const isDashboard = location.pathname === '/dashboard' || location.pathname === '/'
 
+  const [profile, setProfile] = useState(null)
+
+  const fetchProfile = useCallback(async (token) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setProfile(data.profile || null)
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err)
+    }
+  }, [])
+
   // Fetch projects on auth
   useEffect(() => {
     if (appUser && idToken) {
       fetchProjects(idToken)
+      fetchProfile(idToken)
       identifyUser(appUser.uid, { email: appUser.email, name: appUser.name })
     } else {
       clearStore()
+      setProfile(null)
     }
-  }, [appUser, idToken, fetchProjects, clearStore])
+  }, [appUser, idToken, fetchProjects, clearStore, fetchProfile])
 
   // Sync lastIdea from project history
   useEffect(() => {
@@ -201,6 +222,9 @@ function AuthenticatedApp({ modals, setModals, onAuthRequired }) {
           onOpenSaved={() => setModals(m => ({ ...m, saved: true }))}
           onOpenDocs={() => setModals(m => ({ ...m, docs: true }))}
           onOpenSettings={() => setModals(m => ({ ...m, settings: true }))}
+          onOpenProfile={() => setModals(m => ({ ...m, profile: true }))}
+          profile={profile}
+          onHome={handleReset}
         />
       )}
 
@@ -213,6 +237,7 @@ function AuthenticatedApp({ modals, setModals, onAuthRequired }) {
           history={projects}
           onSubmit={handleSubmit}
           onReset={handleReset}
+          onHome={handleReset}
           onExport={handleExport}
           onScaffold={handleScaffold}
           onOpenShare={() => setModals(m => ({ ...m, share: true }))}
@@ -230,6 +255,8 @@ function AuthenticatedApp({ modals, setModals, onAuthRequired }) {
           onOpenSaved={() => setModals(m => ({ ...m, saved: true }))}
           onOpenDocs={() => setModals(m => ({ ...m, docs: true }))}
           onOpenSettings={() => setModals(m => ({ ...m, settings: true }))}
+          onOpenProfile={() => setModals(m => ({ ...m, profile: true }))}
+          profile={profile}
         />
       )}
 
@@ -259,6 +286,12 @@ function AuthenticatedApp({ modals, setModals, onAuthRequired }) {
         onSelectProject={handleSelectRecent}
       />
       <ShareModal isOpen={modals.share} onClose={() => setModals(m => ({ ...m, share: false }))} />
+      <ProfileModal
+        isOpen={modals.profile}
+        onClose={() => setModals(m => ({ ...m, profile: false }))}
+        currentProfile={profile}
+        onProfileUpdated={setProfile}
+      />
     </>
   )
 }
@@ -268,7 +301,7 @@ export default function App() {
   const { appUser, loading, login, signup } = useAuthContext()
   const [modals, setModals] = useState({
     auth: false, settings: false, docs: false,
-    templates: false, saved: false, share: false,
+    templates: false, saved: false, share: false, profile: false,
   })
 
   if (loading) return <Loader text="Loading secure session…" />

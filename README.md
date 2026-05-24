@@ -2,7 +2,7 @@
 
 > Turn system design prompts into interactive diagrams, schema definitions, API contracts, and download-ready project scaffolds in seconds.
 
-InfraMind is a production-ready system architecture prototyping platform built with a modern React + Express + Firebase + Gemini stack. Designed for developers and architects, it translates plain-text specifications into visual blueprints, database relational diagrams, staging env files, and ZIP project boilerplates.
+InfraMind is a production-grade system architecture prototyping platform built with a modern React + Express + Firebase + Gemini stack. Designed for developers and architects, it translates plain-text specifications into visual blueprints, database relational diagrams, staging env files, and ZIP project boilerplates.
 
 ---
 
@@ -24,13 +24,16 @@ graph TD
 
 ## 🚀 Core Developer Features
 
-* **Deep-Linkable Navigation (React Router v6)**: Routes are structured cleanly (`/`, `/dashboard`, `/workspace/:projectId`). Direct bookmarks load and synchronize project state dynamically on page mount.
-* **Cached State Management (Zustand)**: Uses Zustand store cache-first protocols. Project data is saved client-side to minimize redundant Cloud Firestore read overhead.
+* **Deep-Linkable Navigation (React Router v6)**: Clean route structure (`/`, `/dashboard`, `/workspace/:projectId`) enabling direct bookmarking, immediate hydration, and back-button navigation for individual architecture workspaces.
+* **Calm Design & Progressive Disclosure**: Minimizes visual clutter by default. Complex presets, custom stack tags, and secondary navigation are tucked away under the `⚙ Customize Stack & Presets` toggle, allowing developers to focus on conceptual design.
+* **User Profile & Custom Avatars**: Custom user settings panel supporting name, unique username (enforced in the backend), avatar photo uploads (using **Cloudinary** with a client-side **Base64 local image file fallback**), and developer social links (GitHub, LinkedIn, Twitter/X).
+* **Interactive Public Share View (`/p/:shareId`)**: Dynamic shared links displaying the exact same interactive tabs, flowcharts, API tables, and database schemas as the creator's view, run in read-only mode (hiding prompt inputs) and featuring a premium author card badge.
+* **Invisible Contextual AI (Component Optimizer)**: Click on any architecture node (database, server, gateway) to open the side Inspector Panel, and use the inline AI input to submit localized refinements. The prompt is automatically appended as a targeted modifier: `${lastIdea} (Refinement: Optimize component [${selectedNode}]: ${refinementText})`.
+* **Empathetic Connection Recovery**: Employs human-voiced microcopy when connection rate-limits or glitches occur. Provides clear troubleshooting paths (retrying, returning to the dashboard, or configuring a custom client-side API Key in Settings).
+* **Cached State Management (Zustand)**: Client-side store cache-first protocols. Project data is saved client-side to minimize redundant Cloud Firestore read overhead.
 * **Interactive SVG Topologies (Mermaid.js)**: Flowcharts and event sequences render as native, responsive SVG elements in closeable modals with scroll-to-zoom, drag-to-pan, and node click detail callbacks.
 * **In-Browser Project Boilerplates (JSZip)**: Translates generated stack recommendations and REST API definitions into downloadable project ZIP scaffolds (`package.json`, `README.md`, routes, entry stubs) compiled client-side.
 * **Aesthetic Branding Assets (SimpleIcons CDN)**: Selected technologies automatically resolve to brand-colored SVG icons dynamically loaded from the CDN.
-* **Global Error Boundaries**: Traps render-time crash failures gracefully and displays branded recovery options.
-* **Pulser Health Indicator**: An operational green pulsing status dot linked to system status updates.
 
 ---
 
@@ -43,7 +46,7 @@ inframind/
 │   │   ├── components/
 │   │   │   ├── layout/         # Persistent frames (AppShell, Sidebar, Topbar, InspectorPanel)
 │   │   │   ├── ui/             # Core widgets (CommandPalette, Logo)
-│   │   │   └── workspace/      # Dynamic views (LandingPage, Dashboard, GenerationStream, SavedArchitecturesModal)
+│   │   │   └── workspace/      # Dynamic views (LandingPage, Dashboard, GenerationStream, SavedArchitecturesModal, ProfileModal, PublicShare)
 │   │   ├── context/            # Global Auth Context providers
 │   │   ├── hooks/              # Custom lifecycles (useArchitecture)
 │   │   ├── store/              # Zustand state caches
@@ -51,9 +54,8 @@ inframind/
 │   ├── package.json
 │   └── vite.config.js
 ├── server/                     # Express Node.js Backend Module
-│   ├── routes/                 # Endpoint controller layers (generate, projects, share)
+│   ├── index.js                # Express API Entry & Controllers (auth, projects, share, profile)
 │   ├── service-account.json    # Firebase Admin SDK credentials
-│   ├── index.js                # Server entry point
 │   └── package.json
 └── USERFLOW.txt                # Complete site flow & technical specifications
 ```
@@ -83,7 +85,7 @@ cd ../server && npm install
 ### 3. Environment Configurations
 
 #### Client Environment Variables
-Create `client/.env` and specify the Firebase client configuration:
+Create `client/.env` and specify the Firebase, Cloudinary client configurations:
 
 ```ini
 REACT_APP_API_BASE_URL=http://localhost:5000/api
@@ -94,6 +96,10 @@ REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 REACT_APP_FIREBASE_APP_ID=your_app_id
 VITE_POSTHOG_KEY=your_optional_analytics_key
+
+# Cloudinary Credentials (Frontend upload preset)
+REACT_APP_CLOUDINARY_CLOUD_NAME=dydsp9cdj
+REACT_APP_CLOUDINARY_UPLOAD_PRESET=inframind
 ```
 
 #### Server Environment Variables
@@ -119,49 +125,79 @@ npm run dev
 
 ## 📡 API Contract Specification
 
-When calling `POST /api/projects/history`, the API returns a structured architecture JSON blueprint matching this strict Typescript schema interface:
+### 1. Profile Endpoints
 
-```typescript
-interface GeminiArchitectureBlueprint {
-  projectTitle: string;
-  projectSummary: string;
-  architectureExplanation: {
-    whyThisStack: string;
-    keyDecisions: string[];
-  };
-  stack: Array<{
-    layer: string;
-    recommendation: string;
-  }>;
-  mermaidDiagram: string;       // Mermaid flowchart layout markup
-  userFlowDiagram: string;      // Mermaid sequence event markup
-  apis: Array<{
-    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-    route: string;
-    description: string;
-  }>;
-  dbSchema: Array<{
-    collection: string;
-    fields: Array<{
-      name: string;
-      type: string;
-      note: string;
-    }>;
-  }>;
-  deploymentStrategy: {
-    Development: string;
-    Staging: string;
-    Production: string;
-  };
-  scalability: Array<{
-    area: string;
-    detail: string;
-  }>;
-  mvpRoadmap: Array<{
-    phase: string;
-    duration: string;
-    tasks: string[];
-  }>;
+#### `GET /api/profile`
+Fetches current user's profile details. Requires authorization token.
+* **Response `200 OK`**:
+```json
+{
+  "profile": {
+    "username": "janesmith",
+    "name": "Jane Smith",
+    "photoUrl": "https://res.cloudinary.com/...",
+    "githubUrl": "https://github.com/...",
+    "twitterUrl": "https://twitter.com/...",
+    "linkedinUrl": "https://linkedin.com/..."
+  }
+}
+```
+
+#### `POST /api/profile`
+Updates or creates the user's profile document. Performs backend **lowercase uniqueness validation** on the username fields across the database. Requires authorization token.
+* **Request Body**:
+```json
+{
+  "username": "janesmith",
+  "name": "Jane Smith",
+  "photoUrl": "https://res.cloudinary.com/...",
+  "githubUrl": "https://github.com/...",
+  "twitterUrl": "https://twitter.com/...",
+  "linkedinUrl": "https://linkedin.com/..."
+}
+```
+* **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "profile": { ... }
+}
+```
+* **Response `400 Bad Request`** (e.g., if username is already taken):
+```json
+{
+  "error": "Username is already taken"
+}
+```
+
+---
+
+## 💾 Firestore Schema Definitions
+
+### Users Document (`users/{uid}`)
+```json
+{
+  "profile": {
+    "username": "string (lowercase, unique)",
+    "name": "string",
+    "photoUrl": "string (Cloudinary URL or Base64)",
+    "githubUrl": "string",
+    "twitterUrl": "string",
+    "linkedinUrl": "string"
+  }
+}
+```
+
+### Shares Document (`shares/{shareId}`)
+```json
+{
+  "shareId": "string",
+  "ownerId": "string (uid references users/{uid})",
+  "projectId": "string",
+  "title": "string",
+  "summary": "string",
+  "architecture": "object (Gemini JSON Schema)",
+  "createdAt": "timestamp"
 }
 ```
 

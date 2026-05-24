@@ -1,5 +1,7 @@
+// src/components/MermaidDiagram.jsx
 import { useEffect, useRef, useState } from 'react'
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import styles from './MermaidDiagram.module.css'
 
 let mermaidReady = false
@@ -75,16 +77,10 @@ let diagramCounter = 0
 
 export default function MermaidDiagram({ code, title, onSelectNode }) {
   const containerRef = useRef(null)
-  const wrapperRef = useRef(null)
   const [error, setError] = useState('')
-  const [rendered, setRendered] = useState(false)
+  const [svgContent, setSvgContent] = useState('')
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const idRef = useRef(`mermaid-${++diagramCounter}`)
-
-  // Pan & Zoom States
-  const [scale, setScale] = useState(1)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
   // Define a global callback for Mermaid node clicks
   useEffect(() => {
@@ -100,194 +96,166 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
 
   // Reset viewport when code changes
   useEffect(() => {
-    setScale(1)
-    setPan({ x: 0, y: 0 })
+    setSvgContent('')
+    setDimensions({ width: 0, height: 0 })
   }, [code])
 
+  // Mermaid Renderer
   useEffect(() => {
-    if (!code || !containerRef.current) return
+    if (!code) return
     let cancelled = false
 
-    setRendered(false)
     setError('')
 
     getMermaid().then(async mermaid => {
       if (cancelled) return
       try {
-        const { svg } = await mermaid.render(idRef.current + '-svg', code)
+        const svgId = `${idRef.current}-svg`
+        const { svg } = await mermaid.render(svgId, code)
         if (cancelled) return
-        if (containerRef.current) {
-          containerRef.current.innerHTML = svg
-          
-          // Select and style SVG element
-          const svgEl = containerRef.current.querySelector('svg')
-          if (svgEl) {
-            svgEl.style.width = '100%'
-            svgEl.style.height = '100%'
-            svgEl.style.display = 'block'
-            svgEl.style.overflow = 'visible'
+
+        // Parse viewBox dimensions
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(svg, 'image/svg+xml')
+        const svgEl = doc.querySelector('svg')
+        let w = 800
+        let h = 600
+        if (svgEl) {
+          const viewBox = svgEl.getAttribute('viewBox')
+          if (viewBox) {
+            const parts = viewBox.split(/\s+/)
+            if (parts.length === 4) {
+              w = parseFloat(parts[2])
+              h = parseFloat(parts[3])
+            }
           }
-
-          // Attach direct DOM click listeners for maximum reliability
-          const nodeGroups = containerRef.current.querySelectorAll('.node, .actor')
-          nodeGroups.forEach((node) => {
-            node.style.cursor = 'pointer'
-            
-            // Highlight node borders on hover
-            node.addEventListener('mouseenter', () => {
-              const rects = node.querySelectorAll('rect, polygon, circle, ellipse, path')
-              rects.forEach(r => {
-                r.style.stroke = '#2563eb'
-                r.style.strokeWidth = '2px'
-              })
-            })
-
-            node.addEventListener('mouseleave', () => {
-              const rects = node.querySelectorAll('rect, polygon, circle, ellipse, path')
-              rects.forEach(r => {
-                r.style.stroke = ''
-                r.style.strokeWidth = ''
-              })
-            })
-
-            node.addEventListener('click', (e) => {
-              e.stopPropagation()
-              // Find the text elements inside
-              const textEl = node.querySelector('.label') || node
-              const textContent = textEl.textContent?.trim() || ''
-              
-              if (onSelectNode) {
-                // If it contains a newline or code markers, clean it up
-                const cleanLabel = textContent.split('\n')[0].replace(/[\(\[\{\}\]\)]/g, '').trim()
-                onSelectNode(cleanLabel)
-              }
-            })
-          })
-
-          setRendered(true)
         }
+
+        setDimensions({ width: w, height: h })
+        setSvgContent(svg)
       } catch (e) {
         if (!cancelled) {
           setError(`Diagram render error: ${e.message}`)
-          if (containerRef.current) containerRef.current.innerHTML = ''
+          setSvgContent('')
+          setDimensions({ width: 0, height: 0 })
         }
       }
     })
 
     return () => { cancelled = true }
-  }, [code, onSelectNode])
+  }, [code])
 
-  // Drag-to-Pan Handlers
-  function handleMouseDown(e) {
-    if (e.button !== 0) return // Left click only
-    setIsDragging(true)
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
-  }
+  // DOM node listener attacher
+  useEffect(() => {
+    if (!svgContent || !containerRef.current) return
 
-  function handleMouseMove(e) {
-    if (!isDragging) return
-    setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
-  }
+    // Style SVG element inside container
+    const svgEl = containerRef.current.querySelector('svg')
+    if (svgEl) {
+      svgEl.style.width = '100%'
+      svgEl.style.height = '100%'
+      svgEl.style.display = 'block'
+      svgEl.style.overflow = 'visible'
+    }
 
-  function handleMouseUp() {
-    setIsDragging(false)
-  }
+    // Attach click and hover listeners
+    const nodeGroups = containerRef.current.querySelectorAll('.node, .actor')
+    nodeGroups.forEach((node) => {
+      node.style.cursor = 'pointer'
+      
+      const rects = node.querySelectorAll('rect, polygon, circle, ellipse, path')
+      
+      const onEnter = () => {
+        rects.forEach(r => {
+          r.style.stroke = '#2563eb'
+          r.style.strokeWidth = '2px'
+        })
+      }
+      
+      const onLeave = () => {
+        rects.forEach(r => {
+          r.style.stroke = ''
+          r.style.strokeWidth = ''
+        })
+      }
+      
+      const onClick = (e) => {
+        e.stopPropagation()
+        const textEl = node.querySelector('.label') || node
+        const textContent = textEl.textContent?.trim() || ''
+        if (onSelectNode) {
+          const cleanLabel = textContent.split('\n')[0].replace(/[\(\[\{\}\]\)]/g, '').trim()
+          onSelectNode(cleanLabel)
+        }
+      }
 
-  // Touch Handlers for mobile panning
-  function handleTouchStart(e) {
-    if (e.touches.length !== 1) return
-    const touch = e.touches[0]
-    setIsDragging(true)
-    setDragStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y })
-  }
-
-  function handleTouchMove(e) {
-    if (!isDragging) return
-    const touch = e.touches[0]
-    setPan({ x: touch.clientX - dragStart.x, y: touch.clientY - dragStart.y })
-  }
-
-  function handleTouchEnd() {
-    setIsDragging(false)
-  }
-
-  // Scroll-to-Zoom Handler
-  function handleWheel(e) {
-    e.preventDefault()
-    const zoomFactor = 0.08
-    const direction = e.deltaY < 0 ? 1 : -1
-    setScale((prev) => {
-      const next = prev + direction * zoomFactor
-      return Math.max(0.4, Math.min(2.5, next))
+      node.addEventListener('mouseenter', onEnter)
+      node.addEventListener('mouseleave', onLeave)
+      node.addEventListener('click', onClick)
     })
-  }
+  }, [svgContent, onSelectNode])
 
-  // Zoom Button Triggers
-  function zoomIn() {
-    setScale((prev) => Math.min(2.5, prev + 0.15))
-  }
-
-  function zoomOut() {
-    setScale((prev) => Math.max(0.4, prev - 0.15))
-  }
-
-  function resetZoom() {
-    setScale(1)
-    setPan({ x: 0, y: 0 })
-  }
+  const wrapperKey = `${idRef.current}-${code.length}-${dimensions.width}-${dimensions.height}`
 
   return (
     <div className={styles.wrap}>
       {title && <div className={styles.title}>{title}</div>}
       
-      {/* Pan & Zoom Canvas Window */}
-      <div 
-        ref={wrapperRef}
-        className={`${styles.diagramBox} ${isDragging ? styles.grabbing : styles.grab}`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onWheel={handleWheel}
-      >
-        <div 
-          ref={containerRef} 
-          className={styles.mermaid} 
-          style={{
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
-            transformOrigin: 'center center',
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        />
+      <div className={styles.diagramBox}>
+        {svgContent && dimensions.width > 0 ? (
+          <TransformWrapper
+            key={wrapperKey}
+            initialScale={1}
+            minScale={0.25}
+            maxScale={2.0}
+            centerOnInit={true}
+            limitToBounds={true}
+            alignmentAnimation={{ disabled: true }}
+            doubleClick={{ disabled: true }}
+            panning={{ velocityDisabled: true }}
+            wheel={{ step: 0.05 }}
+          >
+            {({ zoomIn, zoomOut, resetTransform }) => (
+              <>
+                {/* Floating Canvas Zoom Controls */}
+                <div className={styles.canvasControls} onMouseDown={(e) => e.stopPropagation()}>
+                  <button type="button" onClick={() => zoomIn()} title="Zoom In"><ZoomIn size={14} /></button>
+                  <button type="button" onClick={() => zoomOut()} title="Zoom Out"><ZoomOut size={14} /></button>
+                  <button type="button" onClick={() => resetTransform()} title="Reset View"><Maximize2 size={12} /></button>
+                </div>
 
-        {/* Floating Canvas Zoom Controls */}
-        {rendered && !error && (
-          <div className={styles.canvasControls} onMouseDown={(e) => e.stopPropagation()}>
-            <button type="button" onClick={zoomIn} title="Zoom In"><ZoomIn size={14} /></button>
-            <button type="button" onClick={zoomOut} title="Zoom Out"><ZoomOut size={14} /></button>
-            <button type="button" onClick={resetZoom} title="Reset View"><Maximize2 size={12} /></button>
-            <span className={styles.zoomPercent}>{Math.round(scale * 100)}%</span>
-          </div>
-        )}
-
-        {!rendered && !error && (
+                <TransformComponent
+                  wrapperStyle={{
+                    width: '100%',
+                    height: '100%',
+                    overflow: 'hidden',
+                  }}
+                  contentStyle={{
+                    width: `${dimensions.width}px`,
+                    height: `${dimensions.height}px`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <div 
+                    ref={containerRef} 
+                    className={styles.mermaid}
+                    style={{ width: '100%', height: '100%' }}
+                    dangerouslySetInnerHTML={{ __html: svgContent }}
+                  />
+                </TransformComponent>
+              </>
+            )}
+          </TransformWrapper>
+        ) : !error ? (
           <div className={styles.placeholder}>
             <span className={styles.placeholderDot} />
             <span className={styles.placeholderDot} style={{ animationDelay: '0.2s' }} />
             <span className={styles.placeholderDot} style={{ animationDelay: '0.4s' }} />
           </div>
-        )}
-        
-        {error && (
-          <div className={styles.error} onMouseDown={(e) => e.stopPropagation()}>
+        ) : (
+          <div className={styles.error}>
             <code>{error}</code>
             <pre className={styles.errorCode}>{code}</pre>
           </div>

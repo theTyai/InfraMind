@@ -11,6 +11,8 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api
 export default function ShareModal({ isOpen, onClose }) {
   const { getFreshToken } = useAuthContext()
   const currentProjectId = useArchitectureStore(s => s.currentProjectId)
+  const projects = useArchitectureStore(s => s.projects)
+  const fetchProjects = useArchitectureStore(s => s.fetchProjects)
 
   const [shareId, setShareId]     = useState(null)
   const [isPublic, setIsPublic]   = useState(false)
@@ -22,13 +24,21 @@ export default function ShareModal({ isOpen, onClose }) {
     ? `${window.location.origin}/p/${shareId}`
     : null
 
-  // Reset state when modal opens
+  // Sync state when modal opens or current project changes
   useEffect(() => {
     if (isOpen) {
       setError(null)
       setCopied(false)
+      const currentProj = projects.find(p => p.id === currentProjectId)
+      if (currentProj) {
+        setIsPublic(!!currentProj.isPublic)
+        setShareId(currentProj.shareId || null)
+      } else {
+        setIsPublic(false)
+        setShareId(null)
+      }
     }
-  }, [isOpen])
+  }, [isOpen, currentProjectId, projects])
 
   async function handleToggle() {
     if (!currentProjectId) return
@@ -56,6 +66,8 @@ export default function ShareModal({ isOpen, onClose }) {
         setShareId(null)
         setIsPublic(false)
       }
+      // Sync local projects list in Zustand
+      await fetchProjects(token)
     } catch (err) {
       setError(err.message || 'Failed to update share settings')
     } finally {
@@ -139,7 +151,7 @@ export default function ShareModal({ isOpen, onClose }) {
           {/* Info */}
           <div className={styles.infoBox}>
             <p>🔒 Viewers cannot edit or regenerate the architecture.</p>
-            <p>🌐 Your name and email are not revealed to viewers.</p>
+            <p>🌐 Your display name and username are shared on the page badge.</p>
             <p>🔗 Turn off to instantly revoke all access.</p>
           </div>
         </div>

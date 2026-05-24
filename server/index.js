@@ -100,6 +100,8 @@ app.get('/api/projects', authMiddleware, async (req, res) => {
         id: doc.id,
         title: data.title,
         summary: data.summary,
+        shareId: data.shareId || null,
+        isPublic: !!data.isPublic,
         metrics: {
           layers: data.layersCount || 0,
           apis: data.apisCount || 0
@@ -289,6 +291,64 @@ app.delete('/api/projects/:projectId/share', authMiddleware, async (req, res) =>
   }
 });
 
+// GET /api/profile — fetch authenticated user profile details
+app.get('/api/profile', authMiddleware, async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  const userId = req.user.uid;
+  try {
+    const userRef = db.collection('users').doc(userId);
+    const snap = await userRef.get();
+    if (!snap.exists) {
+      return res.json({ profile: null });
+    }
+    const data = snap.data();
+    res.json({ profile: data.profile || null });
+  } catch (err) {
+    console.error('Fetch profile failed:', err);
+    res.status(500).json({ error: 'Failed to fetch user profile' });
+  }
+});
+
+// POST /api/profile — update authenticated user profile details with unique username check
+app.post('/api/profile', authMiddleware, async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  const userId = req.user.uid;
+  const { username, name, photoUrl, githubUrl, twitterUrl, linkedinUrl } = req.body;
+
+  if (!username || !username.trim()) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+  const cleanUsername = username.trim().toLowerCase();
+
+  try {
+    // Check if the username is already taken by another user
+    const usernameQuery = await db.collection('users')
+      .where('profile.username', '==', cleanUsername)
+      .get();
+    
+    const isTaken = !usernameQuery.empty && usernameQuery.docs.some(doc => doc.id !== userId);
+    if (isTaken) {
+      return res.status(400).json({ error: 'Username is already taken' });
+    }
+
+    const userRef = db.collection('users').doc(userId);
+    const profileData = {
+      username: cleanUsername,
+      name: name?.trim() || '',
+      photoUrl: photoUrl?.trim() || '',
+      githubUrl: githubUrl?.trim() || '',
+      twitterUrl: twitterUrl?.trim() || '',
+      linkedinUrl: linkedinUrl?.trim() || ''
+    };
+
+    await userRef.set({ profile: profileData }, { merge: true });
+    res.json({ success: true, profile: profileData });
+  } catch (err) {
+    console.error('Save profile failed:', err);
+    res.status(500).json({ error: 'Failed to save user profile' });
+  }
+});
+
 // GET /api/public/:shareId — public read (no auth required)
 app.get('/api/public/:shareId', async (req, res) => {
   if (!db) return res.status(500).json({ error: 'Database not initialized' });
@@ -299,18 +359,38 @@ app.get('/api/public/:shareId', async (req, res) => {
     if (!shareSnap.exists) return res.status(404).json({ error: 'Share not found or has been revoked' });
 
     const data = shareSnap.data();
+
+    // Dynamically fetch owner's profile details
+    let authorProfile = null;
+    const ownerId = data.ownerId;
+    if (ownerId) {
+      const ownerSnap = await db.collection('users').doc(ownerId).get();
+      if (ownerSnap.exists) {
+        authorProfile = ownerSnap.data().profile || null;
+      }
+    }
+
     res.json({
       shareId: data.shareId,
       title: data.title,
       summary: data.summary,
       architecture: data.architecture,
-      createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null
+      createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
+      author: authorProfile ? {
+        username: authorProfile.username || '',
+        name: authorProfile.name || '',
+        photoUrl: authorProfile.photoUrl || '',
+        githubUrl: authorProfile.githubUrl || '',
+        twitterUrl: authorProfile.twitterUrl || '',
+        linkedinUrl: authorProfile.linkedinUrl || ''
+      } : null
     });
   } catch (err) {
     console.error('Public share fetch failed:', err);
     res.status(500).json({ error: 'Failed to fetch shared architecture' });
   }
 });
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 

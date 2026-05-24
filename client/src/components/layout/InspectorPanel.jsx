@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { X, ChevronDown, ChevronUp, Box, Database, Network, Shield, AlertTriangle } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, Box, Database, Network, Shield, AlertTriangle, Sparkles } from 'lucide-react'
 import styles from './InspectorPanel.module.css'
 
 export default function InspectorPanel({ 
@@ -9,9 +9,12 @@ export default function InspectorPanel({
   onExport, 
   onClose, 
   selectedNode, 
-  onSelectNode 
+  onSelectNode,
+  lastIdea,
+  onSubmit
 }) {
   const [copied, setCopied] = useState('')
+  const [refinementText, setRefinementText] = useState('')
   const [accordions, setAccordions] = useState({
     status: true,
     stack: true,
@@ -22,6 +25,14 @@ export default function InspectorPanel({
 
   const toggleAccordion = (section) => {
     setAccordions(prev => ({ ...prev, [section]: !prev[section] }))
+  }
+
+  const handleContextualSubmit = (e) => {
+    e.preventDefault()
+    if (!refinementText.trim() || !onSubmit) return
+    const combinedIdea = `${lastIdea || ''} (Refinement: Optimize component [${selectedNode}]: ${refinementText.trim()})`
+    onSubmit({ idea: combinedIdea, knownStack: [] })
+    setRefinementText('')
   }
 
   const complexity = useMemo(() => {
@@ -97,46 +108,49 @@ export default function InspectorPanel({
     }
   }
 
+  const nodeTypeLabel = useMemo(() => {
+    if (!nodeDetails) return ''
+    if (nodeDetails.type === 'stack') return 'Stack Layer'
+    if (nodeDetails.type === 'db') return 'Database Schema'
+    if (nodeDetails.type === 'api') return 'API Specifications'
+    return 'System Component'
+  }, [nodeDetails])
+
   return (
     <aside className={styles.panel}>
       <div className={styles.header}>
         <div>
-          <p className={styles.title}>Architecture Inspector</p>
-          <p className={styles.subtitle}>{data ? data.projectTitle : 'Metadata & Node specs'}</p>
+          <p className={styles.title}>{selectedNode ? selectedNode : 'Architecture Inspector'}</p>
+          <p className={styles.subtitle}>
+            {selectedNode ? nodeTypeLabel : (data ? data.projectTitle : 'Metadata & Node specs')}
+          </p>
         </div>
-        {onClose && (
+        {selectedNode ? (
           <button 
             type="button" 
             className={styles.closePanelBtn} 
-            onClick={onClose} 
-            title="Collapse Inspector"
+            onClick={() => onSelectNode(null)} 
+            title="Clear Selection"
           >
             <X size={16} />
           </button>
+        ) : (
+          onClose && (
+            <button 
+              type="button" 
+              className={styles.closePanelBtn} 
+              onClick={onClose} 
+              title="Collapse Inspector"
+            >
+              <X size={16} />
+            </button>
+          )
         )}
       </div>
 
       {/* Dynamic Selected Node Details */}
       {selectedNode && nodeDetails && (
         <div className={styles.nodeInspectorWrapper}>
-          <div className={styles.nodeInspectorHeader}>
-            <div className={styles.nodeInspectorTitle}>
-              {nodeDetails.type === 'stack' && <Box size={16} className={styles.nodeIconBlue} />}
-              {nodeDetails.type === 'db' && <Database size={16} className={styles.nodeIconBlue} />}
-              {nodeDetails.type === 'api' && <Network size={16} className={styles.nodeIconBlue} />}
-              {nodeDetails.type === 'general' && <Shield size={16} className={styles.nodeIconBlue} />}
-              <span>Node Inspector</span>
-            </div>
-            <button 
-              type="button" 
-              className={styles.clearNodeBtn} 
-              onClick={() => onSelectNode(null)}
-              title="Clear Selection"
-            >
-              <X size={14} />
-            </button>
-          </div>
-
           <div className={styles.nodeInspectorContent}>
             {nodeDetails.type === 'stack' && (
               <div className={styles.inspectCard}>
@@ -227,121 +241,151 @@ export default function InspectorPanel({
                 </div>
               </div>
             )}
+
+            {/* Contextual AI Optimizer */}
+            {onSubmit && (
+              <div className={styles.contextualAiBlock}>
+                <div className={styles.contextualAiHeader}>
+                  <Sparkles size={13} className={styles.sparklesIcon} />
+                  <span>Contextual AI Optimizer</span>
+                </div>
+                <form onSubmit={handleContextualSubmit} className={styles.contextualAiForm}>
+                  <input
+                    type="text"
+                    placeholder={`How should we optimize ${selectedNode}?`}
+                    value={refinementText}
+                    onChange={(e) => setRefinementText(e.target.value)}
+                    className={styles.contextualInput}
+                  />
+                  <button 
+                    type="submit" 
+                    className={styles.contextualSubmitBtn}
+                    disabled={!refinementText.trim() || state === 'loading'}
+                  >
+                    Optimize
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Accordion 1: Status */}
-      <div className={styles.accordionSection}>
-        <button type="button" className={styles.accordionHeader} onClick={() => toggleAccordion('status')}>
-          <span className={styles.sectionTitle}>Status</span>
-          {accordions.status ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
-        {accordions.status && (
-          <div className={styles.accordionContent}>
-            <div className={`${styles.statusBadge} ${styles[state]}`}>
-              {state === 'result' ? '✓ Generated' : state === 'loading' ? '⏳ Generating' : '◦ Ready'}
-            </div>
+      {!selectedNode && (
+        <>
+          {/* Accordion 1: Status */}
+          <div className={styles.accordionSection}>
+            <button type="button" className={styles.accordionHeader} onClick={() => toggleAccordion('status')}>
+              <span className={styles.sectionTitle}>Status</span>
+              {accordions.status ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {accordions.status && (
+              <div className={styles.accordionContent}>
+                <div className={`${styles.statusBadge} ${styles[state]}`}>
+                  {state === 'result' ? '✓ Generated' : state === 'loading' ? '⏳ Generating' : '◦ Ready'}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Accordion 2: Tech Stack Tags */}
-      <div className={styles.accordionSection}>
-        <button type="button" className={styles.accordionHeader} onClick={() => toggleAccordion('stack')}>
-          <span className={styles.sectionTitle}>Tech Stack Tags</span>
-          {accordions.stack ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
-        {accordions.stack && (
-          <div className={styles.accordionContent}>
-            <div className={styles.badgeCloud}>
-              {techBadges.length > 0 ? (
-                techBadges.map((badge, idx) => (
-                  <span key={idx} className={styles.techTagPill}>{badge}</span>
-                ))
-              ) : (
-                <p className={styles.text}>Stack tags will appear here after generation.</p>
+          {/* Accordion 2: Tech Stack Tags */}
+          <div className={styles.accordionSection}>
+            <button type="button" className={styles.accordionHeader} onClick={() => toggleAccordion('stack')}>
+              <span className={styles.sectionTitle}>Tech Stack Tags</span>
+              {accordions.stack ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {accordions.stack && (
+              <div className={styles.accordionContent}>
+                <div className={styles.badgeCloud}>
+                  {techBadges.length > 0 ? (
+                    techBadges.map((badge, idx) => (
+                      <span key={idx} className={styles.techTagPill}>{badge}</span>
+                    ))
+                  ) : (
+                    <p className={styles.text}>Stack tags will appear here after generation.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Accordion 3: Complexity Score */}
+          <div className={styles.accordionSection}>
+            <button type="button" className={styles.accordionHeader} onClick={() => toggleAccordion('complexity')}>
+              <span className={styles.sectionTitle}>Complexity profile</span>
+              {accordions.complexity ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {accordions.complexity && (
+              <div className={styles.accordionContent}>
+                <div className={styles.scoreCard}>
+                  <div className={styles.scoreDetails}>
+                    <strong>{complexity}</strong>
+                    <span className={styles.scorePercentLabel}>{complexityPercent}%</span>
+                  </div>
+                  <div className={styles.meterTrack}>
+                    <div 
+                      className={`${styles.meterFill} ${styles[complexity.toLowerCase()]}`} 
+                      style={{ width: `${complexityPercent}%` }} 
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Accordion 4: Tradeoffs */}
+          {data?.architectureExplanation?.tradeoffs && (
+            <div className={styles.accordionSection}>
+              <button type="button" className={styles.accordionHeader} onClick={() => toggleAccordion('tradeoffs')}>
+                <span className={styles.sectionTitle}>AI Tradeoffs</span>
+                {accordions.tradeoffs ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {accordions.tradeoffs && (
+                <div className={styles.accordionContent}>
+                  <div className={styles.tradeoffList}>
+                    {data.architectureExplanation.tradeoffs.map((item, idx) => (
+                      <div key={idx} className={styles.tradeoffItem}>
+                        <AlertTriangle size={14} className={styles.tradeoffIcon} />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Accordion 3: Complexity Score */}
-      <div className={styles.accordionSection}>
-        <button type="button" className={styles.accordionHeader} onClick={() => toggleAccordion('complexity')}>
-          <span className={styles.sectionTitle}>Complexity profile</span>
-          {accordions.complexity ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
-        {accordions.complexity && (
-          <div className={styles.accordionContent}>
-            <div className={styles.scoreCard}>
-              <div className={styles.scoreDetails}>
-                <strong>{complexity}</strong>
-                <span className={styles.scorePercentLabel}>{complexityPercent}%</span>
-              </div>
-              <div className={styles.meterTrack}>
-                <div 
-                  className={`${styles.meterFill} ${styles[complexity.toLowerCase()]}`} 
-                  style={{ width: `${complexityPercent}%` }} 
-                />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Accordion 4: Tradeoffs */}
-      {data?.architectureExplanation?.tradeoffs && (
-        <div className={styles.accordionSection}>
-          <button type="button" className={styles.accordionHeader} onClick={() => toggleAccordion('tradeoffs')}>
-            <span className={styles.sectionTitle}>AI Tradeoffs</span>
-            {accordions.tradeoffs ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-          {accordions.tradeoffs && (
-            <div className={styles.accordionContent}>
-              <div className={styles.tradeoffList}>
-                {data.architectureExplanation.tradeoffs.map((item, idx) => (
-                  <div key={idx} className={styles.tradeoffItem}>
-                    <AlertTriangle size={14} className={styles.tradeoffIcon} />
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           )}
-        </div>
-      )}
 
-      {/* Accordion 5: Actions */}
-      <div className={styles.accordionSection}>
-        <button type="button" className={styles.accordionHeader} onClick={() => toggleAccordion('actions')}>
-          <span className={styles.sectionTitle}>Quick Actions</span>
-          {accordions.actions ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
-        {accordions.actions && (
-          <div className={styles.accordionContent}>
-            <div className={styles.actionsBox}>
-              <button 
-                className={styles.actionBtn} 
-                type="button" 
-                onClick={handleCopy} 
-                disabled={!data}
-              >
-                {copied === 'title' ? 'Copied' : 'Copy title'}
-              </button>
-              <button 
-                className={styles.actionBtn} 
-                type="button" 
-                onClick={onExport} 
-                disabled={!data || exporting}
-              >
-                {exporting ? 'Exporting…' : 'Export PDF'}
-              </button>
-            </div>
+          {/* Accordion 5: Actions */}
+          <div className={styles.accordionSection}>
+            <button type="button" className={styles.accordionHeader} onClick={() => toggleAccordion('actions')}>
+              <span className={styles.sectionTitle}>Quick Actions</span>
+              {accordions.actions ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {accordions.actions && (
+              <div className={styles.accordionContent}>
+                <div className={styles.actionsBox}>
+                  <button 
+                    className={styles.actionBtn} 
+                    type="button" 
+                    onClick={handleCopy} 
+                    disabled={!data}
+                  >
+                    {copied === 'title' ? 'Copied' : 'Copy title'}
+                  </button>
+                  <button 
+                    className={styles.actionBtn} 
+                    type="button" 
+                    onClick={onExport} 
+                    disabled={!data || exporting}
+                  >
+                    {exporting ? 'Exporting…' : 'Export PDF'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </aside>
   )
 }

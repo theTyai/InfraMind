@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from './Sidebar.jsx'
 import Topbar from './Topbar.jsx'
 import Workspace from '../workspace/Workspace.jsx'
+import InspectorPanel from './InspectorPanel.jsx'
 import styles from './AppShell.module.css'
 
 export default function AppShell(props) {
@@ -21,6 +22,12 @@ export default function AppShell(props) {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  useEffect(() => {
+    if (props.selectedNode) {
+      localStorage.setItem('inframind_checklist_diagram', 'true')
+    }
+  }, [props.selectedNode])
 
   return (
     <div className={`${styles.shell} ${!sidebarOpen ? styles.sidebarCollapsed : ''}`}>
@@ -48,6 +55,9 @@ export default function AppShell(props) {
           onOpenSaved={props.onOpenSaved}
           onOpenDocs={props.onOpenDocs}
           onOpenSettings={props.onOpenSettings}
+          onHome={props.onHome}
+          onOpenProfile={props.onOpenProfile}
+          profile={props.profile}
         />
       </aside>
 
@@ -65,7 +75,26 @@ export default function AppShell(props) {
           onOpenSettings={props.onOpenSettings}
         />
         <div className={styles.workspaceContainer}>
-          <Workspace {...props} />
+          <div className={styles.workspaceLayout}>
+            <div className={styles.workspaceContent}>
+              <Workspace {...props} />
+            </div>
+            {props.selectedNode && (
+              <div className={styles.inspectorSlot}>
+                <InspectorPanel
+                  state={props.state}
+                  data={props.data}
+                  exporting={props.exporting}
+                  onExport={props.onExport}
+                  selectedNode={props.selectedNode}
+                  onSelectNode={props.onSelectNode}
+                  onClose={() => props.onSelectNode(null)}
+                  onSubmit={props.onSubmit}
+                  lastIdea={props.lastIdea}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

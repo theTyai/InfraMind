@@ -6,6 +6,7 @@ import {
   FileDown, Share2, FolderDown
 } from 'lucide-react'
 import { getTechIconUrl } from '../../utils/techIcons.js'
+import InspectorPanel from '../layout/InspectorPanel.jsx'
 import styles from './Workspace.module.css'
 
 export default function ArchitectureTabs({ 
@@ -32,6 +33,9 @@ export default function ArchitectureTabs({
 
   const openModal = (modalName) => {
     setModals(prev => ({ ...prev, [modalName]: true }))
+    if (modalName === 'archDiagram') {
+      localStorage.setItem('inframind_checklist_diagram', 'true')
+    }
   }
 
   const closeModal = (modalName) => {
@@ -74,7 +78,10 @@ export default function ArchitectureTabs({
               <button
                 type="button"
                 className={styles.deckActionBtn}
-                onClick={onScaffold}
+                onClick={() => {
+                  localStorage.setItem('inframind_checklist_scaffold', 'true')
+                  onScaffold()
+                }}
                 title="Download project scaffold .zip"
               >
                 <FolderDown size={14} />
@@ -230,54 +237,70 @@ export default function ArchitectureTabs({
       </div>
 
       {/* Floating Prompt Refiner Bar (Bottom-Center) */}
-      <div className={styles.floatingPromptBarWrapper}>
-        <form className={styles.floatingPromptBarForm} onSubmit={handleRefinementSubmit}>
-          <Terminal size={16} className={styles.promptBarIcon} />
-          <input
-            name="refinementInput"
-            type="text"
-            className={styles.promptBarInput}
-            placeholder="Refine this architecture (e.g. 'Add Redis cache layer')..."
-          />
-          <button 
-            type="submit" 
-            className={styles.promptBarSubmitBtn}
-            title="Refine Blueprint"
-          >
-            <Send size={14} />
-          </button>
-        </form>
-      </div>
+      {onSubmit && (
+        <div className={styles.floatingPromptBarWrapper}>
+          <form className={styles.floatingPromptBarForm} onSubmit={handleRefinementSubmit}>
+            <Terminal size={16} className={styles.promptBarIcon} />
+            <input
+              name="refinementInput"
+              type="text"
+              className={styles.promptBarInput}
+              placeholder="Refine this architecture (e.g. 'Add Redis cache layer')..."
+            />
+            <button 
+              type="submit" 
+              className={styles.promptBarSubmitBtn}
+              title="Refine Blueprint"
+            >
+              <Send size={14} />
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* ================= MODAL WINDOWS ================= */}
 
       {/* Modal: System Architecture Diagram */}
       {modals.archDiagram && (
-        <div className={styles.modalBackdrop} onClick={() => closeModal('archDiagram')}>
+        <div className={styles.modalBackdrop} onClick={() => { onSelectNode && onSelectNode(null); closeModal('archDiagram'); }}>
           <div className={`${styles.modalContent} ${styles.modalDiagram}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div className={styles.modalHeaderTitleGroup}>
                 <Cpu size={18} className={styles.modalIcon} />
                 <h3>System Architecture Topology</h3>
               </div>
-              <button type="button" className={styles.modalCloseBtn} onClick={() => closeModal('archDiagram')}>
+              <button type="button" className={styles.modalCloseBtn} onClick={() => { onSelectNode && onSelectNode(null); closeModal('archDiagram'); }}>
                 <X size={18} />
               </button>
             </div>
-            <div className={styles.modalBody} style={{ padding: 0 }}>
-              <div className={styles.diagramModalEmbed}>
+            <div className={styles.modalBodySplit}>
+              <div className={styles.diagramModalEmbedSplit}>
                 <MermaidDiagram
                   code={data.mermaidDiagram}
                   onSelectNode={(nodeLabel) => {
                     onSelectNode && onSelectNode(nodeLabel)
-                    closeModal('archDiagram')
                   }}
                 />
               </div>
+              {selectedNode && (
+                <div className={styles.modalInspectorPanelSlot}>
+                  <InspectorPanel
+                    state="result"
+                    data={data}
+                    exporting={exporting}
+                    onExport={onExport}
+                    selectedNode={selectedNode}
+                    onSelectNode={onSelectNode}
+                    onClose={() => onSelectNode(null)}
+                    onSubmit={onSubmit}
+                    lastIdea={idea}
+                  />
+                </div>
+              )}
             </div>
             <div className={styles.modalFooter}>
               <span className={styles.modalFooterTip}>💡 Scroll to Zoom · Drag to Pan · Click a node to inspect it</span>
-              <button type="button" className={styles.modalCloseFooterBtn} onClick={() => closeModal('archDiagram')}>
+              <button type="button" className={styles.modalCloseFooterBtn} onClick={() => { onSelectNode && onSelectNode(null); closeModal('archDiagram'); }}>
                 Close Diagram
               </button>
             </div>

@@ -901,3 +901,173 @@
   }
 }
 
+/* ── Calm Design & Onboarding Checklist & Trust Badges ── */
+.advancedToggleBtn {
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.advancedToggleBtn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.advancedOptionsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  margin-top: 4px;
+  box-sizing: border-box;
+}
+
+.presetContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trustBadgesRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  opacity: 0.85;
+}
+
+.trustBadge {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.trustDivider {
+  color: rgba(255, 255, 255, 0.1);
+  font-size: 0.8rem;
+}
+
+.checklistSection {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.checklistCard {
+  width: 100%;
+  max-width: 720px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  box-sizing: border-box;
+}
+
+.checklistCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checklistCardHeader h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.checklistHeaderIcon {
+  color: var(--secondary);
+}
+
+.checklistDesc {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.checklistGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.checklistItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.checklistDone {
+  background: rgba(16, 185, 129, 0.04);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: var(--text-dim);
+}
+
+.checklistCheck {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: bold;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.checklistDone .checklistCheck {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+}
+
+.checklistText {
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .checklistGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.userAvatarImg {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+
+
