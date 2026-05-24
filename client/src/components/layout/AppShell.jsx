@@ -1,43 +1,54 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from './Sidebar.jsx'
 import Topbar from './Topbar.jsx'
 import Workspace from '../workspace/Workspace.jsx'
 import styles from './AppShell.module.css'
 
 export default function AppShell(props) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 1024 : false)
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth > 1024 : true)
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 1024
+      setIsMobile(mobile)
+      if (mobile) {
+        setSidebarOpen(false)
+      } else {
+        setSidebarOpen(true)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   return (
     <div className={`${styles.shell} ${!sidebarOpen ? styles.sidebarCollapsed : ''}`}>
-      {/* Sidebar */}
-      <aside className={styles.sidebarSlot}>
-        {sidebarOpen ? (
-          <Sidebar
-            history={props.history}
-            onNewProject={props.onReset}
-            onClose={() => setSidebarOpen(false)}
-            onSelectProject={props.onSelectProject}
-            activeIdea={props.lastIdea}
-            user={props.user}
-            onLogout={props.onLogout}
-            onOpenTemplates={props.onOpenTemplates}
-            onOpenSaved={props.onOpenSaved}
-            onOpenDocs={props.onOpenDocs}
-            onOpenSettings={props.onOpenSettings}
-          />
-        ) : (
-          <button
-            type="button"
-            className={styles.sidebarToggle}
-            onClick={() => setSidebarOpen(true)}
-            title="Expand sidebar"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <path d="M9 3v18"/>
-            </svg>
-          </button>
-        )}
+      {/* Sidebar Backdrop for Mobile */}
+      {sidebarOpen && (
+        <div 
+          className={styles.sidebarBackdrop} 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Slot */}
+      <aside className={`${styles.sidebarSlot} ${sidebarOpen ? styles.sidebarOpen : ''}`}>
+        <Sidebar
+          collapsed={!sidebarOpen && !isMobile}
+          history={props.history}
+          onNewProject={props.onReset}
+          onToggle={() => setSidebarOpen(p => !p)}
+          onClose={() => setSidebarOpen(false)}
+          onSelectProject={props.onSelectProject}
+          activeIdea={props.lastIdea}
+          user={props.user}
+          onLogout={props.onLogout}
+          onOpenTemplates={props.onOpenTemplates}
+          onOpenSaved={props.onOpenSaved}
+          onOpenDocs={props.onOpenDocs}
+          onOpenSettings={props.onOpenSettings}
+        />
       </aside>
 
       {/* Main Column */}
@@ -60,3 +71,4 @@ export default function AppShell(props) {
     </div>
   )
 }
+

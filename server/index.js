@@ -214,6 +214,106 @@ app.post('/api/projects/history', authMiddleware, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+
+// ─── SHARE ENDPOINTS ──────────────────────────────────────────────────────────
+
+// POST /api/projects/:projectId/share — make project publicly shareable
+app.post('/api/projects/:projectId/share', authMiddleware, async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  const userId = req.user.uid;
+  const { projectId } = req.params;
+
+  try {
+    const projectRef = db.collection('users').doc(userId).collection('projects').doc(projectId);
+    const projectSnap = await projectRef.get();
+    if (!projectSnap.exists) return res.status(404).json({ error: 'Project not found' });
+
+    // Get latest history entry to share
+    const historySnap = await projectRef.collection('chatHistory').orderBy('timestamp', 'desc').limit(1).get();
+    if (historySnap.empty) return res.status(404).json({ error: 'No architecture to share' });
+
+    const latestEntry = historySnap.docs[0].data();
+    const projectData = projectSnap.data();
+
+    // Check if already shared
+    const existingShareId = projectData.shareId;
+    if (existingShareId) {
+      return res.json({ shareId: existingShareId, shareUrl: `/p/${existingShareId}` });
+    }
+
+    // Generate a share ID (nanoid-style using crypto)
+    const shareId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Write to top-level shares collection (public readable)
+    await db.collection('shares').doc(shareId).set({
+      shareId,
+      ownerId: userId,
+      projectId,
+      title: projectData.title,
+      summary: projectData.summary,
+      architecture: latestEntry.geminiResponse,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Mark project as shared
+    await projectRef.update({ shareId, isPublic: true });
+
+    res.json({ shareId, shareUrl: `/p/${shareId}` });
+  } catch (err) {
+    console.error('Share creation failed:', err);
+    res.status(500).json({ error: 'Failed to create share link' });
+  }
+});
+
+// DELETE /api/projects/:projectId/share — revoke public share
+app.delete('/api/projects/:projectId/share', authMiddleware, async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  const userId = req.user.uid;
+  const { projectId } = req.params;
+
+  try {
+    const projectRef = db.collection('users').doc(userId).collection('projects').doc(projectId);
+    const snap = await projectRef.get();
+    if (!snap.exists) return res.status(404).json({ error: 'Project not found' });
+
+    const { shareId } = snap.data();
+    if (shareId) {
+      await db.collection('shares').doc(shareId).delete();
+      await projectRef.update({ shareId: null, isPublic: false });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Share revocation failed:', err);
+    res.status(500).json({ error: 'Failed to revoke share link' });
+  }
+});
+
+// GET /api/public/:shareId — public read (no auth required)
+app.get('/api/public/:shareId', async (req, res) => {
+  if (!db) return res.status(500).json({ error: 'Database not initialized' });
+  const { shareId } = req.params;
+
+  try {
+    const shareSnap = await db.collection('shares').doc(shareId).get();
+    if (!shareSnap.exists) return res.status(404).json({ error: 'Share not found or has been revoked' });
+
+    const data = shareSnap.data();
+    res.json({
+      shareId: data.shareId,
+      title: data.title,
+      summary: data.summary,
+      architecture: data.architecture,
+      createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null
+    });
+  } catch (err) {
+    console.error('Public share fetch failed:', err);
+    res.status(500).json({ error: 'Failed to fetch shared architecture' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 app.listen(PORT, () => {
   console.log(`Express server listening on port ${PORT}`);
 });

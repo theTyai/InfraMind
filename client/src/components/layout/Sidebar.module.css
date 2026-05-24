@@ -10,6 +10,7 @@
   overflow: hidden;
   box-sizing: border-box;
   flex-shrink: 0;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ── User Profile Block (Top) ──────────────────────────────── */
@@ -297,3 +298,49 @@
   color: var(--text-primary);
   background: rgba(255,255,255,0.05);
 }
+
+/* Collapsed Sidebar overrides */
+.sidebar.collapsed {
+  width: 52px;
+}
+
+.sidebar.collapsed .userBlock {
+  padding: 14px 0;
+  justify-content: center;
+}
+
+.sidebar.collapsed .newBtn {
+  margin: 12px auto 8px;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar.collapsed .bottomNav {
+  padding: 6px 0;
+  align-items: center;
+}
+
+.sidebar.collapsed .bottomNavBtn {
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar.collapsed .brandFooter {
+  padding: 10px 0;
+  justify-content: center;
+}
+
+.sidebar.collapsed .collapseBtn {
+  padding: 6px;
+}
+

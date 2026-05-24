@@ -2,7 +2,8 @@ import { useState } from 'react'
 import MermaidDiagram from '../MermaidDiagram.jsx'
 import { 
   Send, Terminal, Network, Shield, Cpu, Activity, X, Database, Cloud, 
-  TrendingUp, Maximize2, ExternalLink, Calendar, Layers, Sliders
+  TrendingUp, Maximize2, ExternalLink, Calendar, Layers, Sliders,
+  FileDown, Share2, FolderDown
 } from 'lucide-react'
 import { getTechIconUrl } from '../../utils/techIcons.js'
 import styles from './Workspace.module.css'
@@ -11,6 +12,8 @@ export default function ArchitectureTabs({
   data, 
   idea, 
   onExport, 
+  onScaffold,
+  onOpenShare,
   exporting, 
   onSubmit, 
   envKeyStatus,
@@ -56,14 +59,40 @@ export default function ArchitectureTabs({
             <div className={styles.ideationEyebrow}>AI ARCHITECT CONTROL DECK</div>
             <h1 className={styles.ideationTitle}>{data.projectTitle}</h1>
           </div>
-          <button 
-            type="button" 
-            className={styles.pdfExportBtnDeck} 
-            onClick={onExport} 
-            disabled={exporting}
-          >
-            {exporting ? 'Exporting...' : 'Export Blueprint PDF'}
-          </button>
+          <div className={styles.deckHeaderActions}>
+            <button 
+              type="button" 
+              className={styles.deckActionBtn} 
+              onClick={onExport} 
+              disabled={exporting}
+              title="Export full blueprint as PDF"
+            >
+              <FileDown size={14} />
+              {exporting ? 'Exporting…' : 'Export PDF'}
+            </button>
+            {onScaffold && (
+              <button
+                type="button"
+                className={styles.deckActionBtn}
+                onClick={onScaffold}
+                title="Download project scaffold .zip"
+              >
+                <FolderDown size={14} />
+                Scaffold
+              </button>
+            )}
+            {onOpenShare && (
+              <button
+                type="button"
+                className={`${styles.deckActionBtn} ${styles.deckActionBtnShare}`}
+                onClick={onOpenShare}
+                title="Share this architecture publicly"
+              >
+                <Share2 size={14} />
+                Share
+              </button>
+            )}
+          </div>
         </div>
         <p className={styles.ideationSummary}>{data.projectSummary}</p>
         
@@ -299,28 +328,30 @@ export default function ArchitectureTabs({
             </div>
             <div className={styles.modalBody}>
               <div className={styles.modalScrollContent}>
-                <table className={styles.specsTable}>
-                  <thead>
-                    <tr>
-                      <th>Method</th>
-                      <th>Path</th>
-                      <th>Operational Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.apis?.map((api, idx) => (
-                      <tr key={idx}>
-                        <td>
-                          <span className={`${styles.methodPillBadge} ${styles[api.method]}`}>
-                            {api.method}
-                          </span>
-                        </td>
-                        <td><code className={styles.specsRouteCode}>{api.route}</code></td>
-                        <td className={styles.specsRouteDesc}>{api.description}</td>
+                <div style={{ overflowX: 'auto', width: '100%' }}>
+                  <table className={styles.specsTable}>
+                    <thead>
+                      <tr>
+                        <th>Method</th>
+                        <th>Path</th>
+                        <th>Operational Description</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {data.apis?.map((api, idx) => (
+                        <tr key={idx}>
+                          <td>
+                            <span className={`${styles.methodPillBadge} ${styles[api.method]}`}>
+                              {api.method}
+                            </span>
+                          </td>
+                          <td><code className={styles.specsRouteCode}>{api.route}</code></td>
+                          <td className={styles.specsRouteDesc}>{api.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
             <div className={styles.modalFooter}>
@@ -358,24 +389,26 @@ export default function ArchitectureTabs({
                         <strong className={styles.dbModelName}>{model.collection}</strong>
                         <span className={styles.dbClickHint}>Click to Inspect Node Details</span>
                       </div>
-                      <table className={styles.dbModelTable}>
-                        <thead>
-                          <tr>
-                            <th>Field</th>
-                            <th>Type</th>
-                            <th>Note</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {model.fields?.map((field, fIdx) => (
-                            <tr key={fIdx}>
-                              <td><code>{field.name}</code></td>
-                              <td>{field.type}</td>
-                              <td>{field.note}</td>
+                      <div style={{ overflowX: 'auto', width: '100%' }}>
+                        <table className={styles.dbModelTable}>
+                          <thead>
+                            <tr>
+                              <th>Field</th>
+                              <th>Type</th>
+                              <th>Note</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {model.fields?.map((field, fIdx) => (
+                              <tr key={fIdx}>
+                                <td><code>{field.name}</code></td>
+                                <td>{field.type}</td>
+                                <td>{field.note}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   ))}
                 </div>

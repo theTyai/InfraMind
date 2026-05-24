@@ -193,6 +193,24 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
     setIsDragging(false)
   }
 
+  // Touch Handlers for mobile panning
+  function handleTouchStart(e) {
+    if (e.touches.length !== 1) return
+    const touch = e.touches[0]
+    setIsDragging(true)
+    setDragStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y })
+  }
+
+  function handleTouchMove(e) {
+    if (!isDragging) return
+    const touch = e.touches[0]
+    setPan({ x: touch.clientX - dragStart.x, y: touch.clientY - dragStart.y })
+  }
+
+  function handleTouchEnd() {
+    setIsDragging(false)
+  }
+
   // Scroll-to-Zoom Handler
   function handleWheel(e) {
     e.preventDefault()
@@ -230,6 +248,9 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         onWheel={handleWheel}
       >
         <div 

@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import {
   ArrowRight, Layers, Zap, LogOut, User,
   Sparkles, Database, Cloud, Network, Settings,
-  BookOpen, Clock, Plus, ChevronRight, Cpu
+  BookOpen, Clock, Plus, ChevronRight, Cpu, Menu, X
 } from 'lucide-react'
 import Logo from '../ui/Logo.jsx'
 import Footer from '../Footer.jsx'
@@ -67,6 +67,7 @@ export default function Dashboard({
   history = [],
   onSelectRecent,
   onOpenTemplates,
+  onOpenSaved,
   onOpenDocs,
   onOpenSettings,
 }) {
@@ -74,6 +75,7 @@ export default function Dashboard({
   const [tagInput, setTagInput] = useState('')
   const [tags, setTags] = useState([])
   const [suggestions, setSuggestions] = useState([])
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const tagInputRef = useRef(null)
 
   function handleTagInput(e) {
@@ -172,8 +174,41 @@ export default function Dashboard({
             >
               <LogOut size={14} />
             </button>
+            
+            {/* Mobile menu toggle */}
+            <button
+              type="button"
+              className={styles.hamburgerBtn}
+              onClick={() => setMobileMenuOpen(p => !p)}
+              title="Toggle Menu"
+            >
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className={styles.mobileNavDropdown}>
+            <button type="button" className={styles.mobileNavPill} onClick={() => { onOpenTemplates(); setMobileMenuOpen(false); }}>
+              <Layers size={14} />
+              <span>Templates</span>
+            </button>
+            <button type="button" className={styles.mobileNavPill} onClick={() => { onOpenDocs(); setMobileMenuOpen(false); }}>
+              <BookOpen size={14} />
+              <span>Docs</span>
+            </button>
+            <button type="button" className={styles.mobileNavPill} onClick={() => { onOpenSettings(); setMobileMenuOpen(false); }}>
+              <Settings size={14} />
+              <span>Settings</span>
+            </button>
+            <div className={styles.mobileNavDivider} />
+            <button type="button" className={`${styles.mobileNavPill} ${styles.mobileLogoutBtn}`} onClick={() => { onLogout(); setMobileMenuOpen(false); }}>
+              <LogOut size={14} />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        )}
       </nav>
 
       {/* ── Main ── */}
@@ -290,7 +325,7 @@ export default function Dashboard({
                 <Clock size={15} />
                 Recent Architectures
               </div>
-              <button type="button" className={styles.sectionAction} onClick={onOpenTemplates}>
+              <button type="button" className={styles.sectionAction} onClick={onOpenSaved}>
                 View all <ChevronRight size={13} />
               </button>
             </div>

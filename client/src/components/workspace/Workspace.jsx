@@ -29,6 +29,8 @@ export default function Workspace(props) {
         data={props.data}
         idea={props.lastIdea}
         onExport={props.onExport}
+        onScaffold={props.onScaffold}
+        onOpenShare={props.onOpenShare}
         exporting={props.exporting}
         onSubmit={props.onSubmit}
         envKeyStatus={props.envKeyStatus}
@@ -36,5 +38,6 @@ export default function Workspace(props) {
         onSelectNode={props.onSelectNode}
       />
     </main>
+
   )
 }

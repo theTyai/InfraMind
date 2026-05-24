@@ -24,20 +24,22 @@ cloud account for later retrieval.
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  SECTION 2 — APPLICATION STRUCTURE (Pages & States)
+  SECTION 2 — APPLICATION STRUCTURE (Pages, Routes & Shells)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-The app has four primary states managed in App.jsx:
+The application implements client-side routing using React Router v6:
 
   ┌──────────────────────────────────────────────────────────────────────────┐
-  │  State        │  Component Rendered          │  Description              │
+  │  URL Route       │  Component Rendered          │  Access Controls       │
   ├──────────────────────────────────────────────────────────────────────────┤
-  │  idle + guest │  <LandingPage>               │  Public marketing page    │
-  │  idle + auth  │  <Dashboard>                 │  Private user dashboard   │
-  │  loading      │  <GenerationStream>          │  AI generation in flight  │
-  │  result       │  <AppShell> → <Workspace>    │  Architecture workspace   │
-  │  error        │  <AppShell> → Error view     │  Generation failed        │
+  │  /               │  <LandingPage>               │  Public / Redirects    │
+  │  /dashboard      │  <Dashboard>                 │  Protected (Auth)      │
+  │  /workspace/:id  │  <AppShell> → <Workspace>    │  Protected (Auth)      │
+  │  /p/:shareId     │  <PublicShare>               │  Public (Read-Only)    │
   └──────────────────────────────────────────────────────────────────────────┘
+
+State transitions (e.g. from Dashboard to Workspace) are navigated via URL path
+changes, keeping deep-linkable URLs and browser history intact.
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -137,6 +139,8 @@ Component: Dashboard.jsx
 NAVBAR (top):
   - Logo (left)
   - [Templates] [Docs] [Settings] pill buttons (center)
+    └─ On mobile viewports (<= 768px), these center nav pills and the Sign Out
+       action are housed in a toggleable hamburger menu dropdown overlay.
   - User chip showing display name (right)
   - Sign Out button (right)
 
@@ -226,16 +230,22 @@ Layout: AppShell (Sidebar + Topbar + Workspace main area)
 
   Layout from TOP to BOTTOM:
 
+  - The Sidebar is globally persistent and remains mounted. In desktop mode,
+    it can be collapsed to a 52px width view showing only centered icons
+    and chevron-right toggle. In mobile mode (<= 1024px), the sidebar slides
+    offscreen as a drawer, closeable via backdrop clicks.
+
   ┌─ TOP: USER PROFILE ────────────────────────────────────────────────────┐
   │  Avatar (initial) | Display Name | Email | [Sign Out icon]             │
+  │  (Meta text & sign out are hidden when collapsed)                      │
   └────────────────────────────────────────────────────────────────────────┘
   ┌─ NEW ARCHITECTURE BUTTON ──────────────────────────────────────────────┐
-  │  [+ New Architecture] → resets state to 'idle', shows Dashboard       │
+  │  [+] button → resets workspace, navigates back to /dashboard           │
   └────────────────────────────────────────────────────────────────────────┘
   ┌─ ACTIVE PROJECT BRIEF (if architecture loaded) ────────────────────────┐
-  │  Blue left-border card showing current project prompt (truncated)      │
+  │  Blue left-border card showing current project prompt (hidden on collapse)│
   └────────────────────────────────────────────────────────────────────────┘
-  ┌─ PAST PROJECTS (scrollable list) ──────────────────────────────────────┐
+  ┌─ PAST PROJECTS (scrollable list, hidden on collapse) ──────────────────┐
   │  Section label: "Past Projects"                                        │
   │  Up to 8 past projects listed                                          │
   │  Each item: dot indicator, project name (truncated), layers/APIs count │
@@ -244,12 +254,11 @@ Layout: AppShell (Sidebar + Topbar + Workspace main area)
   ┌─ SETTINGS / DOCS (bottom nav) ─────────────────────────────────────────┐
   │  [📖 Documentation] → opens DocsModal                                  │
   │  [⚙ Settings] → opens SettingsModal                                   │
+  │  (Sign out button is displayed here only when collapsed)               │
   └────────────────────────────────────────────────────────────────────────┘
   ┌─ COMPANY BRAND (very bottom) ──────────────────────────────────────────┐
-  │  InfraMind logo + [← collapse] button                                 │
+  │  InfraMind logo (hidden on collapse) + collapse/expand chevron button  │
   └────────────────────────────────────────────────────────────────────────┘
-
-  Collapsed state: sidebar collapses to 52px icon strip with expand button
 
 ─────────────────────────────────────────────────────────────────────────────
   7.2 TOPBAR (top of main content area)
@@ -422,7 +431,7 @@ These modals are rendered at App.jsx level and available across all views:
   Auth hook:    useAuth.js → Firebase Authentication
   Arch hook:    useArchitecture.js → manages generate/load/reset lifecycle
   Store:        useArchitectureStore.js → Zustand store for projects list
-  Router:       No router — single-page state machine in App.jsx
+  Router:       React Router v6 (BrowserRouter)
   Diagrams:     Mermaid.js rendered via MermaidDiagram.jsx
   PDF Export:   html2canvas + jsPDF via exportPdf.js
   Icons:        lucide-react + SimpleIcons CDN (getTechIconUrl)
@@ -569,6 +578,53 @@ These modals are rendered at App.jsx level and available across all views:
     ]
   }
 
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SECTION 14 — PLATFORM TECHNICAL SUMMARY & UI SPECIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+InfraMind is a production-grade, AI-powered system architecture design SaaS.
+Users enter plain-text product descriptions (e.g., "A real-time ride-sharing
+application with payment integrations and redis caching"), and the application
+dynamically models, generates, and renders comprehensive system topologies,
+sequence flows, database schemas, REST APIs, deployment guides, and scalability
+roadmaps using the Google Gemini 2.5 Pro model.
+
+TECHNICAL ARCHITECTURE STACK:
+  • Frontend: React 18 (Vite-powered bundle)
+  • Routing: React Router v6 (BrowserRouter) with route protections, parameters
+    extraction, and deep-linking (e.g. /workspace/:projectId)
+  • State Management: Zustand (useArchitectureStore.js) for cache orchestration
+    + custom React Context hook (AuthContext.jsx) for Firebase sessions
+  • Diagrams: Mermaid.js rendering with drag-to-pan and scroll-to-zoom controls
+  • Boilerplate: jszip for boilerplate zip scaffolding compiling in-browser
+  • Styling: Vanilla CSS Modules (modular CSS scopes, zero Tailwind)
+  • Backend: Node.js + Express (Firebase Admin SDK, Gemini SDK, Firestore)
+
+GLOBAL ROUTING & NAVIGATION STATES:
+  1. PUBLIC MARKETING PAGE (/)
+     - Hero: Outcome-first copy, stats, single "Start Building Free" CTA.
+     - Navbar: Logo, pricing/features anchors, and responsive "Get Started" cta.
+       On mobile (<= 768px), the Sign In option is hidden and padding decreases
+       to prevent visual cutting off.
+     - Footer: Single-row branding footer showing copyright and System Status.
+  2. PRIVATE USER DASHBOARD (/dashboard)
+     - Time-aware greetings, preset chips, customizable stack tags with auto-
+       complete suggestions and SimpleIcons CDN brand-colored logos.
+     - Recent projects card grid. The "View all" action launches the Saved
+       Architectures modal.
+     - Mobile menu (<= 768px): Hamburger button toggle displaying a glassmorphic
+       dropdown overlay to access templates, docs, settings, and logout.
+  3. WORKSPACE CANVAS DECK (/workspace/:projectId)
+     - Split-layout (Persistent Sidebar + Content Area + Topbar).
+     - Sidebar keeps mounted to allow smooth transitions: narrows to 52px
+       (showing centered icons) on desktop collapse, and slides off-screen
+       as drawer on mobile. Chevron toggle button changes direction.
+     - Main Area: Project summary, Stack badges, embedded system diagrams,
+       API specs, DB schema models, multi-stage deployment tiers, and MVP roadmaps.
+     - Overlapping title row is stacked vertically on mobile.
+     - Floating prompt bar at bottom for iterations and modifications.
 
 ================================================================================
   END OF DOCUMENT

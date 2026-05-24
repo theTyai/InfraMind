@@ -121,7 +121,7 @@ export default function LandingPage({ onOpenAuth, onOpenDocs }) {
               Sign In
             </button>
             <button type="button" className={styles.navCta} onClick={onOpenAuth}>
-              Get Started Free
+              Get Started
               <ArrowRight size={14} />
             </button>
           </div>
@@ -137,7 +137,7 @@ export default function LandingPage({ onOpenAuth, onOpenDocs }) {
           </div>
 
           <h1 className={styles.heroTitle}>
-            Design Production
+            Ship Production
             <br />
             <span className={styles.heroTitleGradient}>Infrastructure</span>
             <br />
@@ -145,34 +145,29 @@ export default function LandingPage({ onOpenAuth, onOpenDocs }) {
           </h1>
 
           <p className={styles.heroDesc}>
-            Describe your product. InfraMind generates complete multi-tier system architectures,
-            API specifications, database schemas, and deployment playbooks — instantly.
+            Stop whiteboarding. Describe your product in plain English and get
+            a complete, production-ready system architecture — API specs, database
+            schemas, deployment strategies — in under a minute.
           </p>
 
           <div className={styles.heroCtas}>
             <button type="button" className={styles.heroPrimary} onClick={onOpenAuth}>
-              Start Building for Free
+              <Zap size={15} />
+              Start Building Free
               <ArrowRight size={16} />
             </button>
-            <a href="#features" className={styles.heroSecondary}>
-              See how it works
-            </a>
           </div>
+          <p className={styles.heroNoCc}>No credit card required &middot; Free forever plan available</p>
 
           <div className={styles.heroStats}>
             <div className={styles.heroStat}>
               <span className={styles.heroStatNum}>10k+</span>
-              <span className={styles.heroStatLabel}>Architectures Generated</span>
-            </div>
-            <div className={styles.heroStatDivider} />
-            <div className={styles.heroStat}>
-              <span className={styles.heroStatNum}>98%</span>
-              <span className={styles.heroStatLabel}>Production Accuracy</span>
+              <span className={styles.heroStatLabel}>Teams shipped faster</span>
             </div>
             <div className={styles.heroStatDivider} />
             <div className={styles.heroStat}>
               <span className={styles.heroStatNum}>45s</span>
-              <span className={styles.heroStatLabel}>Average Generation Time</span>
+              <span className={styles.heroStatLabel}>From idea to blueprint</span>
             </div>
           </div>
         </div>
