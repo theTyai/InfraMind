@@ -226,21 +226,40 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
         })
       }
       
-      const onClick = (e) => {
-        e.stopPropagation()
-        const textEl = node.querySelector('.label') || node
-        const textContent = textEl.textContent?.trim() || ''
-        if (onSelectNode) {
-          const cleanLabel = textContent.split('\n')[0].replace(/[\(\[\{\}\]\)]/g, '').trim()
-          onSelectNode(cleanLabel)
+      let startX = 0
+      let startY = 0
+      let startTime = 0
+
+      const onPointerDown = (e) => {
+        startX = e.clientX
+        startY = e.clientY
+        startTime = Date.now()
+      }
+
+      const onPointerUp = (e) => {
+        const diffX = Math.abs(e.clientX - startX)
+        const diffY = Math.abs(e.clientY - startY)
+        const duration = Date.now() - startTime
+
+        // If the pointer barely moved and was released quickly, it is a click/tap
+        if (diffX < 5 && diffY < 5 && duration < 300) {
+          e.stopPropagation()
+          const textEl = node.querySelector('.label') || node
+          const textContent = textEl.textContent?.trim() || ''
+          if (onSelectNode) {
+            const cleanLabel = textContent.split('\n')[0].replace(/[\(\[\{\}\]\)]/g, '').trim()
+            onSelectNode(cleanLabel)
+          }
         }
       }
 
       node.addEventListener('mouseenter', onEnter)
       node.addEventListener('mouseleave', onLeave)
-      node.addEventListener('click', onClick)
+      node.addEventListener('pointerdown', onPointerDown)
+      node.addEventListener('pointerup', onPointerUp)
     })
   }, [svgContent, onSelectNode])
+
 
   // Dynamic Scale Calculations
   let initialScale = 1
