@@ -1,0 +1,91 @@
+.footer {
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(11, 16, 32, 0.78);
+  backdrop-filter: blur(18px);
+}
+
+.inner {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 28px 24px 42px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.brandBlock {
+  max-width: 430px;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6d7cff 0%, #38bdf8 100%);
+  color: #f3f7ff;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.name {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.tagline,
+.copy,
+.linkGroup a {
+  color: var(--text-secondary);
+}
+
+.copy {
+  line-height: 1.7;
+}
+
+.links {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.linkGroup {
+  display: grid;
+  gap: 10px;
+  min-width: 140px;
+}
+
+.groupTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.linkGroup a {
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.linkGroup a:hover {
+  color: var(--brand);
+}
+
+@media (max-width: 700px) {
+  .inner {
+    padding: 24px 16px 36px;
+  }
+}
