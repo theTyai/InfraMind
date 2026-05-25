@@ -21,7 +21,7 @@ export function getTechIconUrl(techName) {
   else if (slug.includes('mongo')) slug = 'mongodb';
   else if (slug.includes('redis')) slug = 'redis';
   else if (slug.includes('docker')) slug = 'docker';
-  else if (slug.includes('aws') || slug.includes('amazon')) slug = 'amazonwebservices';
+  else if (slug.includes('aws') || slug.includes('amazon')) slug = 'amazonaws';
   else if (slug.includes('gcp') || slug.includes('google cloud')) slug = 'googlecloud';
   else if (slug.includes('stripe')) slug = 'stripe';
   else if (slug.includes('graphql')) slug = 'graphql';

@@ -1,5 +1,5 @@
 // src/components/MermaidDiagram.jsx
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import styles from './MermaidDiagram.module.css'
@@ -76,7 +76,6 @@ async function getMermaid() {
 let diagramCounter = 0
 
 export default function MermaidDiagram({ code, title, onSelectNode }) {
-  const containerRef = useRef(null)
   const wrapperRef = useRef(null)
   const [error, setError] = useState('')
   const [svgContent, setSvgContent] = useState('')
@@ -204,12 +203,12 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
     return () => { cancelled = true }
   }, [code])
 
-  // DOM node listener attacher & fluid styling
-  useEffect(() => {
-    if (!svgContent || !containerRef.current) return
+  // callback ref to handle listener attachment & fluid styling on element mount/remount
+  const containerRef = useCallback((el) => {
+    if (!el) return
 
     // Style SVG element inside container to make it fluid
-    const svgEl = containerRef.current.querySelector('svg')
+    const svgEl = el.querySelector('svg')
     if (svgEl) {
       svgEl.style.width = '100%'
       svgEl.style.height = '100%'
@@ -224,7 +223,7 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
     }
 
     // Attach click and hover listeners
-    const nodeGroups = containerRef.current.querySelectorAll('.node, .actor')
+    const nodeGroups = el.querySelectorAll('.node, .actor')
     nodeGroups.forEach((node) => {
       node.style.cursor = 'pointer'
       
