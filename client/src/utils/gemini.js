@@ -140,6 +140,7 @@ Rules for high conciseness to avoid truncation:
 - apis: must have 6-8 realistic, project-specific routes (limit description to 10 words).
 - dbSchema: must have 3 collections or tables with 3-4 fields each (limit note to 10 words).
 - mermaidDiagram: must be a valid Mermaid flowchart TD diagram (graph TD)
+  - Do NOT use subgraphs (subgraph ... end) to keep the diagram layout flat, clean, and avoid parsing syntax errors.
   - Ensure all node shapes are modern and labels are concise. Use shapes like [Client], ((Gateway)), [(Database)], etc.
   - Append 'click' event handles to all primary architecture nodes so they can be selected in the UI. Example click binding format at the end of the diagram definition:
     click Client onNodeClick

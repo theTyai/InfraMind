@@ -132,11 +132,29 @@ export default function MermaidDiagram({ code, title, onSelectNode }) {
 
     setError('')
 
+    // Sanitize code to resolve common Mermaid syntax issues (e.g., SubGraph casing, unquoted spaces in subgraph titles)
+    const sanitizedCode = code.split('\n').map(line => {
+      const trimmed = line.trim();
+      if (/^subgraph\b/i.test(trimmed)) {
+        const content = trimmed.substring(8).trim();
+        if (content) {
+          if (!content.startsWith('"') && !content.endsWith('"') && content.includes(' ')) {
+            return `${line.substring(0, line.indexOf(trimmed))}subgraph "${content.replace(/"/g, '')}"`;
+          }
+        }
+        return `${line.substring(0, line.indexOf(trimmed))}subgraph ${content}`;
+      }
+      if (/^end\b/i.test(trimmed)) {
+        return `${line.substring(0, line.indexOf(trimmed))}end`;
+      }
+      return line;
+    }).join('\n');
+
     getMermaid().then(async mermaid => {
       if (cancelled) return
       try {
         const svgId = `${idRef.current}-svg`
-        const { svg } = await mermaid.render(svgId, code)
+        const { svg } = await mermaid.render(svgId, sanitizedCode)
         if (cancelled) return
 
         // Parse viewBox dimensions supporting space and comma separators
